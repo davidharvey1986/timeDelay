@@ -38,6 +38,8 @@ class timeDelayDistribution:
                 outputPklFile = inputJsonFileName+'.pkl'
 
         self.inputJsonFileName  = inputJsonFileName
+        self.cleanTimeDelays = inputJsonFileName+'.clean.pkl'
+        
         self.outputPklFile = outputPklFile
         if zLens is None:
             self.getLensRedshift()
@@ -73,15 +75,18 @@ class timeDelayDistribution:
         
     def convolveTimeDelayDistribution( self ):
         
-        jsonData = json.load(open(self. inputJsonFileName, 'rb'))
+        jsonData = json.load(open(self.inputJsonFileName, 'rb'))
+        cleanTimeDelayData = pkl.load(open(self.cleanTimeDelays,'rb'))
+
         self.finalPDF = {'lensPlaneOnly':jsonData, 'finalLoS': []}
         
             
-        for iSourcePlane in jsonData:
-            
+        for iSourcePlaneIndex in range(len(jsonData)):
+            iSourcePlane = jsonData[iSourcePlaneIndex]
+            iTimeDelayData = cleanTimeDelayData[iSourcePlaneIndex]
             iSourcePlaneDist = \
                   singleSourcePlaneDistribution( self.zLens, \
-                            iSourcePlane,\
+                            iSourcePlane, iTimeDelayData, \
                             newHubbleParameter=self.newHubbleParameter,\
                             timeDelayBins=self.timeDelayBins)
             if iSourcePlaneDist.flag == -1:
@@ -94,8 +99,7 @@ class timeDelayDistribution:
         if not os.path.isfile(self.outputPklFile):
             raise ValueError("Cannot find pickle file doing again")
         else:
-            pass
-            #print("Found pickle file %s" % self.outputPklFile)
+            print("Found pickle file %s" % self.outputPklFile)
         tmpDict = pkl.load(open(self.outputPklFile, 'rb'))
         self.__dict__.update(tmpDict)
         
@@ -109,12 +113,13 @@ class singleSourcePlaneDistribution:
     This is a single source plane distribution
     '''
 
-    def __init__( self, lensRedshift, jsonData, \
+    def __init__( self, lensRedshift, jsonData, timeDelayData, \
             newHubbleParameter = None, timeDelayBins=None ):
 
         
         self.timeDelayBins = timeDelayBins
         self.data = jsonData
+        self.timeDelayData = timeDelayData
         self.zLens = lensRedshift
         self.zSource = jsonData['z']
 
@@ -173,11 +178,12 @@ class singleSourcePlaneDistribution:
         secondsToDays = 1./60./60./24.
 
          
-        minMagRatioIndexes = np.array(self.data['doubleRatios']) > minMagRatio
+        minMagRatioIndexes = \
+            self.timeDelayData['timeDelay'] > minMagRatio
 
         #Minus the dependecncy on h
         self.logDoubleTimeDelay = \
-          np.log10(np.array(self.data['doubleTimeDelay'])[minMagRatioIndexes]*secondsToDays)
+          np.log10(self.timeDelayData['timeDelay'][minMagRatioIndexes]*secondsToDays)
 
 
         
@@ -188,10 +194,12 @@ class singleSourcePlaneDistribution:
 
         #Get the lower of the two magnifications
         self.minMagnification = \
-          np.array([ np.min( np.abs(np.array(i)[np.abs( np.array(i) ) >0 ]) ) \
-                     for i in np.array(self.data['doubles'])[minMagRatioIndexes]])
-        self.getMagnificationBias()
-
+            self.timeDelayData['minimumMagnification'][minMagRatioIndexes]
+        
+        #self.getMagnificationBias()
+        self.magBias = \
+            self.timeDelayData['timeDelay'][minMagRatioIndexes]/\
+            self.timeDelayData['biasedTimeDelay'][minMagRatioIndexes]
 
         if self.timeDelayBins is None:
             timeDelayRange =  \
@@ -208,19 +216,26 @@ class singleSourcePlaneDistribution:
                         np.max(self.timeDelayBins)]
 
             self.dDeltaTimeDelay = \
-              self.lineOfSightPDF['dX'][0]/self.lineOfSightPDF['x'][-1]\
-              *(timeDelayRange[1]-timeDelayRange[0])
+                self.lineOfSightPDF['dX'][0]/self.lineOfSightPDF['x'][-1]\
+                *(timeDelayRange[1]-timeDelayRange[0])
           
         print("dDeltaTimeDelay is :", self.dDeltaTimeDelay)
-
-        y, x = np.histogram( self.logDoubleTimeDelay, \
-                        bins=self.timeDelayBins, density=True )
+        #Since the effective is polar and we are in cartesian
+        #I need to weight the timedelays
+        centralisationWeight = \
+            1./data['minCentralDistance'][minMagRatioIndexes]**2
+        y, x = \
+            np.histogram( self.logDoubleTimeDelay, \
+                          bins=self.timeDelayBins, density=True, \
+                          weights=centralisationWeight)
         xc = (x[1:] + x[:-1])/2.
         dX = x[1:] - x[:-1]
         print("Magnification bias is :", self.magBias)
 
-        yBiased, xBiased = np.histogram( self.logDoubleTimeDelay, bins=self.timeDelayBins, density=True, \
-                                             weights=self.magBias )
+        yBiased, xBiased = \
+            np.histogram( self.logDoubleTimeDelay, \
+                          bins=self.timeDelayBins, density=True, \
+                          weights=self.magBias*centralisationWeight )
         xc = (x[1:] + x[:-1])/2.
         dX = x[1:] - x[:-1]
         
@@ -229,6 +244,10 @@ class singleSourcePlaneDistribution:
         self.biasedTimeDelayPDF = {'x':xc, 'y':yBiased, 'dX':self.dDeltaTimeDelay}
         
         return 1
+
+    
+
+
     def getSourcePlaneWeighting( self ):
         '''
         Given that at different redshifts the dV/dZ is different

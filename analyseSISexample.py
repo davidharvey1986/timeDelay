@@ -20,7 +20,7 @@ def main():
     ax1 = plt.subplot(gs[:3,0])
     ax2 = plt.subplot(gs[3:, 0])
     for iColor, iVelocityDispersion in enumerate(velocityDispersions):
-        jsonFileName = "../output/SISexample/newCleaning/SIS_example_z0.2_%i_5.0_4.0.json" % iVelocityDispersion
+        jsonFileName = "../output/SISexample/SIS_example_z0.2_%i_5.0_4.0.json" % iVelocityDispersion
         if not os.path.isfile(jsonFileName):
             print(jsonFileName)
             continue
@@ -29,7 +29,7 @@ def main():
         if not os.path.isfile(newFileName):
             cleanMultipleImages(jsonFileName)
 
-        data = pkl.load(open(newFileName,'rb'))
+        data = pkl.load(open(newFileName,'rb'))[0]
 
         xc, y, yError = getHistogram( data, biasWeight=False, \
                                           weight=True, \
