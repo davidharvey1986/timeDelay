@@ -14,13 +14,13 @@ from matplotlib import pyplot as plt
 from powerLawFit import *
 from magnificationBias import magnificationBias
 import cosmolopy.distance as dist
-
+import glob 
 def main(fname, bias=False, **kwargs):
     '''
     Plot the images as a function of distance from the centre
     '''
 
-    data = pkl.load(open(fname,'rb'))
+    data = pkl.load(open(fname,'rb'))[0]
 
     xc, y, yError = getHistogram( data, biasWeight=bias )
 
@@ -105,6 +105,7 @@ def getHistogram( data, weight=True, biasWeight=False, bins=None):
     if biasWeight:
         zSource = 5.
         print(data['minimumMagnification'])
+        magBiasWeight = data['biasedTimeDelay'] / data['timeDelay']
 
         weightedTime *= magBiasWeight
         
@@ -134,71 +135,75 @@ def cleanMultipleImages(jsonFile, zSource=5.):
     PLus clean out those that are not on opposite sides of the lens
     '''
 
-    jsonData = json.load(open(jsonFile,'rb'))[0]
+    jsonDataAllSourcePlanes = json.load(open(jsonFile,'rb'))
 
     #since  len(jsonData['doubleTimeDelay']) =  len(jsonData['positionX'])
     #Each list in positionX corresponds to 1 time delay
 
-    #The new cleaned time delay
-    newTimeDelays = np.array([])
-    #the separation between the two images
-    separation = np.array([])
-    #the minimum central distance of the two images
-    minCentralDistance = np.array([])
-    #the  magnification ratio
-    magnificationRatio = np.array([])
-    #the minimum magnification
-    minimumMagnification = np.array([])
     
-    for iRecord in range(len(jsonData['doubleTimeDelay'])):
-
-        if iRecord/1000 == iRecord/1000.:
-            percent = np.float(iRecord)/len(jsonData['doubleTimeDelay'])*100.
-            print("%0.1f" % percent)
-
-        times = np.array(jsonData['doublesTime'][iRecord])
-        xDistance = np.array(jsonData['positionX'][iRecord]) - 500
-        yDistance = np.array(jsonData['positionY'][iRecord]) - 500
-        centralDistance = np.sqrt( xDistance**2+yDistance**2)
-
-        parity = xDistance / np.abs(xDistance)
-        parityNoZeros = parity[times!=0]
-        centralDistanceNoZeros = centralDistance[times != 0]*parityNoZeros
-        timesNoZeros = times[times != 0]
-        xNoZeros =  np.array(jsonData['positionX'][iRecord])[times!=0]
-        yNoZeros =  np.array(jsonData['positionY'][iRecord])[times!=0]
-
-        #if parityNoZeros[-1] != parityNoZeros[-2]:
-        newTimeDelays = np.append(newTimeDelays, jsonData['doubleTimeDelay'][iRecord])
+    cleanData = []
+    print("Cleaning %s" % jsonFile)
+    noTimes = np.array([])
+    for jsonData in jsonDataAllSourcePlanes:
         
-        iMinCentralDistance = np.min(np.abs([centralDistanceNoZeros[-1], centralDistanceNoZeros[-2]]) )
-        minCentralDistance = np.append(minCentralDistance, iMinCentralDistance )
 
-
-
-        iSeparation = np.sqrt( (xNoZeros[-2] - xNoZeros[-1])**2 + \
-                                   (yNoZeros[-2] - yNoZeros[-1])**2)
-                                   
-        separation = np.append(separation, iSeparation)
-        magnificationRatio = np.append( magnificationRatio, \
-                    jsonData['doubleRatios'][iRecord])
-
-        absoluteMags = np.abs( jsonData['doubles'][iRecord] )
-        minimumMagnification = np.append( minimumMagnification, \
-                        np.min( absoluteMags[ absoluteMags>0]))      
-    zSource = 1.3
-    magBiasWeight = \
-          magnificationBias( zSource, minimumMagnification)
-
-    
-    data = {"timeDelay":newTimeDelays, "minCentralDistance":minCentralDistance, \
-            "imageSeparation":separation, "magnificationRatio":magnificationRatio, \
+        times = np.array(jsonData['doublesTime'])
+        if len(times) == 0:
+            
+            data = {"timeDelay":noTimes, "minCentralDistance":noTimes, \
+                    "imageSeparation":noTimes, "magnificationRatio":noTimes, \
+                    "minimumMagnification":noTimes, \
+                    "biasedTimeDelay":noTimes}
+                    
+            cleanData.append(data) 
+            continue
+        xDistance = np.array(jsonData['positionX']) - 500.
+        yDistance = np.array(jsonData['positionY']) - 500.
+        centralDistance = np.sqrt( xDistance**2+yDistance**2)
+        centralDistance[ times == 0 ] = 999999
+        parity = xDistance / np.abs(xDistance)
+        newTimeDelays = np.array( jsonData['doubleTimeDelay'])
+        minCentralDistance = np.min(centralDistance, axis=1)
+        
+        absoluteMags = np.abs( np.array(jsonData['doubles'] ))
+        absoluteMags[ absoluteMags == 0 ] = 999999
+        minimumMagnification = np.min(absoluteMags, axis=1)
+        magnificationRatio = np.array(jsonData['doubleRatios'])
+        print("Getting magnification bias for source Redshift %s" % jsonData['z'])
+        magBiasWeight = \
+            magnificationBias( jsonData['z'], minimumMagnification)
+        print("Done")
+        tNoZerosIndex = np.argsort(times, axis=1)
+        xNoZeros = np.take_along_axis(xDistance,tNoZerosIndex,axis=1)
+        yNoZeros = np.take_along_axis(yDistance,tNoZerosIndex,axis=1)
+        tNoZeros = np.take_along_axis(times,tNoZerosIndex,axis=1)
+        tDelays = tNoZeros[:,-1] - tNoZeros[:,-2]
+        
+        imageSeparation = \
+            np.sqrt((xNoZeros[:,-2] - xNoZeros[:,-1])**2+\
+                    (yNoZeros[:,-2] - yNoZeros[:,-1])**2)
+       
+        data = {"timeDelay":newTimeDelays, "minCentralDistance":minCentralDistance, \
+            "imageSeparation":imageSeparation, "magnificationRatio":magnificationRatio, \
             "minimumMagnification":minimumMagnification, \
             "biasedTimeDelay":magBiasWeight*newTimeDelays}
-    
-    pkl.dump(data, open(jsonFile+'.clean.pkl','wb'))
+        
+        cleanData.append(data) 
+    pkl.dump(cleanData, open(jsonFile+'.clean.pkl','wb'))
 
 
+def cleanAllFiles():
+    '''
+    loop through the main files and clean
+    like here
+    '''
+    allFiles = glob.glob('../output/CDM/z_0.74/*.json')
+
+    for iFile in allFiles:
+        cleanMultipleImages(iFile)
+        print(iFile)
+
+        
     
     
 def getTimeDelayDistance(zLens, zSource, HubbleConstant, omegaLambda=1.0):
@@ -224,12 +229,11 @@ def getTimeDelayDistance(zLens, zSource, HubbleConstant, omegaLambda=1.0):
         return  (1.+zLens)*Dl*Ds/Dls/cInMpcPerSecond
 
 
-    
-if __name__ == '__main__':
 
+def sisExample():
     #NEEDS TO BE DONE
     fname = '../output/SISexample/SIS_example_z0.2_400_4.SISexample.json'
-    cleanMultipleImages(fname)
+    #cleanMultipleImages(fname)
     main(fname+".clean.pkl",
         label=r"Source Plane Resolution: 0.2kpc  ($\beta $ = ",\
         color='green')
@@ -265,3 +269,6 @@ if __name__ == '__main__':
     
     plt.show()
 
+    
+if __name__ == '__main__':
+    sisExample()

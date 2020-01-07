@@ -40,33 +40,57 @@ def plotMagnificationBias():
 
     plt.plot(redshifts, bias)
     plt.show()
-def magnificationBias( redshift, magnification, limitingObsMag=27 ):
+    
+def magnificationBias( redshift, magnification, limitingObsMag=27, maxMemory=10000 ):
     '''
     Get the magnification bias for a given geodesic
+
+    I have changed it so it doesn loop anymore and puts it in a an array
+    This way it is significatly quicker, but heavy on the memory
+    So if magnificaito is very large and blows the computer up, i have a limit
+    and cut it into bits and do in chunks
+
     '''
     bias = []
     lumFuncRaw = \
       luminosityFunction( redshift, limitingObsMag=limitingObsMag  )
 
-    for i, iMag in enumerate(magnification):
+    nMagnifications = len(magnification)
 
-        lumFuncBias = \
-          luminosityFunction( redshift,limitingObsMag=limitingObsMag )
-        lumFuncBias.magnitudes = \
-          lumFuncRaw.magnitudes+2.5*np.log10(iMag)
-        '''
-        m - mf = -2.5( log(m) - log(m/mu))
-        m - mf = -2.5( log(m) - log(m) + log(mu))
-        m - mf = -2.5logmu
-        mf = m + 2.5logmu
-        '''
-        lumFuncBias.getLuminosityFunction()
-        nMags = len(lumFuncRaw.luminosityFunction['y'])
-        iBias = np.sum(lumFuncBias.luminosityFunction['y']) / \
-                    np.sum(lumFuncRaw.luminosityFunction['y'])
-        bias.append(iBias)
-        
-    return np.array(bias)
+    if nMagnifications <= maxMemory:
+        biasMagnitudes = np.matrix(np.tile( lumFuncRaw.magnitudes, (nMagnifications,1)))
+    else:
+        #Memory fail
+        #do it in bits
+        nIterations = np.int(np.ceil(len(magnification )/maxMemory))
+        bias = np.array([])
+        print("Protecting memory doing in %i bits" % nIterations)
+        for i in range(nIterations):
+            
+            print("%i/%i" % (i+1, nIterations))
+            iMagnifications = magnification[i*maxMemory:(i+1)*maxMemory]
+            iBias = magnificationBias(redshift, iMagnifications)
+            bias =np.append( bias, iBias)
+         
+        return bias
+    '''
+    m - mf = -2.5( log(m) - log(m/mu))
+    m - mf = -2.5( log(m) - log(m) + log(mu))
+    m - mf = -2.5logmu
+    mf = m + 2.5logmu
+    '''
+    matrixMags = np.matrix(2.5*np.log10(magnification))
+
+    biasMagnitudes += matrixMags.T
+
+    biasedLumFuncs = \
+        getLuminosityFunctionMatrix( np.array(biasMagnitudes), \
+                                     lumFuncRaw.magStar, lumFuncRaw.lumStar)
+
+    newBias = np.sum(biasedLumFuncs['y'], axis=1) / \
+        np.sum(lumFuncRaw.luminosityFunction['y'])
+    
+    return newBias
 
 class luminosityFunction():
     '''
@@ -137,6 +161,15 @@ class luminosityFunction():
           b*self.redshift +\
           c*self.redshift**2 
 
+def getLuminosityFunctionMatrix( magnitudes, magStar, lumStar, \
+                                 alpha=-3.23, beta=-1.35):
+
+    brightEndPower = 0.4*(alpha+1)*(magnitudes - magStar)
+    faintEndPower = 0.4*(beta+1)*(magnitudes - magStar)
+    #Equation 10
+    luminosityFunction = {'x':magnitudes,
+       'y':lumStar/(10**brightEndPower + 10**faintEndPower)}
+    return luminosityFunction
 
 if __name__ == '__main__':
     plotMagBiasedPDF()
