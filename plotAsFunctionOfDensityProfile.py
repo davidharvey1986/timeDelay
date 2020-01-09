@@ -14,7 +14,7 @@ def main( ):
     '''
 
     
-    allFiles = glob.glob('../output/CDM/z_*/B*cluster_0_*_total*.json')
+    allFiles = glob.glob('../output/CDM/z_0.*/B*cluster_0_*_total*.json')
     rGrid = getRadGrid()
     
     #For aesthetics                                                                                         
@@ -24,33 +24,104 @@ def main( ):
     lineStyles = ['--',':','-.']
     #####
 
+    tPeak = []
+    tPeakError = []
     beta = []
     betaError = []
     powerLaw = []
     powerLawError = []
-
+    nHalos = []
+    RMS = []
     for iHalo in allFiles:
-        pdf = combineJsonFiles([iHalo])
-
+        pdf = combineJsonFiles([iHalo], newHubbleParameter=100.)
+ 
+ 
+ 
+        nHalosInField =substructure( iHalo ) 
+        nHalos.append(nHalosInField)
+     
         densityProfileIndex, densityProfileIndexError = \
           getDensityProfileIndex( iHalo, rGrid=rGrid)
         powerLaw.append(densityProfileIndex)
         powerLawError.append(densityProfileIndexError)
 
         #####FIT POWER LAW TO THE DISTRIBUTION##############
-        powerLawFitClass = powerLawFit( pdf, yMin=1e-5, curveFit=True )
+        
+        powerLawFitClass = powerLawFit( pdf, yMin=1.5e-2, curveFit=True, inputYvalue='y' )
+        
         beta.append(powerLawFitClass.params['params'][1])
         betaError.append( powerLawFitClass.params['error'][1])
+        RMS.append( np.sqrt(np.sum((powerLawFitClass.getPredictedProbabilities()-powerLawFitClass.yNoZeros)**2)))
+        #dX = pdf['x'][1] - pdf['x'][0]
+        #pdf['y'] /= np.sum(pdf['y'])*dX
+        #cumPDF = np.cumsum(pdf['y']*dX)
+        #medTime = pdf['x'][np.argmin(np.abs(cumPDF - 0.5))]
+        #medTimeError = pdf['x'][np.argmin(np.abs(cumPDF - 0.84))] - medTime
+        #print(medTime)
+        tPeak.append( powerLawFitClass.params['params'][0])
+        tPeakError.append(  powerLawFitClass.params['error'][0])
         #################
         
+        #if  (densityProfileIndex > 10.9) & (powerLawFitClass.params['params'][0] < -2):
+            
+        #plt.plot(pdf['x'], pdf['y'])
+        #plt.plot(pdf['x'], powerLawFitClass.getPredictedProbabilities(), ls='-')
 
-        plt.plot(pdf['x']-pdf['x'][np.argmax(pdf['y'])],pdf['y'], color=scalarMap.to_rgba(np.abs(densityProfileIndex)))
+        #plt.yscale('log')
+        #plt.show()
+        
+    powerLaw = np.array(powerLaw)
+    beta  = np.array(beta)
+    tPeak = np.array(tPeak)
+    nHalos=  np.array(nHalos)
+    betaError = np.array(betaError)
+    tPeakError = np.array(tPeakError)
+    powerLawError = np.array(powerLawError)
+    #For aesthetics                                                                                         
+    jet = cm = plt.get_cmap('Reds')
+    cNorm  = colors.Normalize(vmin=2.8, vmax=3.)
+    scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=jet)
+    lineStyles = ['--',':','-.']
+    alpha = 0.2
+    #####
 
-        #if 1.14 > powerLawFitClass.params['params'][1]:
-        #    pdb.set_trace()
-    plt.show()
+    ax = plt.gca()
+    nHalos = np.array(nHalos)
+    
+    ax.errorbar(powerLaw[nHalos == 1], beta[nHalos == 1], \
+            xerr=powerLawError[nHalos == 1], yerr=betaError[nHalos == 1], fmt='o', \
+                          color='blue', alpha=alpha, label='No Substructure')
+                          
+    ax.errorbar(powerLaw[nHalos > 1], beta[nHalos > 1],\
+            xerr=powerLawError[nHalos > 1], yerr=betaError[nHalos > 1], \
+            fmt='o', alpha=alpha, color='red', label='Substrucutre')
+            
+    
+    #axarr[1].errorbar(powerLaw[nHalos == 1], tPeak[nHalos == 1], \
+    #        xerr=powerLawError[nHalos == 1], yerr=tPeakError[nHalos == 1], fmt='o', color='red')
 
-    plt.errorbar(beta,powerLaw,yerr=powerLawError, xerr=betaError, fmt='o')
+
+    #axarr[1].errorbar(powerLaw[nHalos > 1], tPeak[nHalos > 1], \
+    #        xerr=powerLawError[nHalos > 1], yerr=tPeakError[nHalos > 1], fmt='o')
+            
+    ax.legend()
+    
+    #axarr[0].scatter(powerLaw, beta, c=RMS)
+    #axarr[1].scatter(powerLaw, tPeak, c=RMS)
+
+    getAndPlotTrend(powerLaw[nHalos == 1], beta[nHalos == 1], ax, '-', color='blue')
+    getAndPlotTrend(powerLaw[nHalos > 1], beta[nHalos > 1], ax, '-', color='red')
+
+    #popt, pcov = curve_fit(func, powerLaw[nHalos == 1], beta[nHalos == 1])
+    #ax.plot( powerLaw, func( powerLaw, *popt), color='blue')
+    #popt, pcov = curve_fit(func, powerLaw[nHalos > 1], beta[nHalos > 1])
+    #ax.plot( powerLaw, func( powerLaw, *popt), color='red')
+    
+    #popt, pcov = curve_fit(func, powerLaw, tPeak)
+    #axarr[1].plot( powerLaw, func( powerLaw, *popt))
+    ax.set_xlabel('Projected Density Profile Power Law Index')
+    ax.set_ylabel('PDF Power Law Index')
+    plt.savefig('../plots/densityProfile.pdf')
     plt.show()
     
 def getDensityProfileIndex( jsonFileName, rGrid=None, nRadialBins=10):
@@ -61,14 +132,17 @@ def getDensityProfileIndex( jsonFileName, rGrid=None, nRadialBins=10):
 
     popt, pcov = curve_fit(func, radial, density)
     error = np.sqrt(np.diag(pcov))
-    index = (density[-1] - density[0])/(radial[-1] - radial[0])
-
+    index = popt[1] #(density[-1] - density[0])/(radial[-1] - radial[0])
+    #if index < -0.94:
+    #plt.plot(radial, density)
+    #plt.plot(radial, func( radial, *popt))
+    #plt.show()
     return index, error[1]
 
 def func(x, a, b):
     return a  + x*b
 
-def getDensityProfile( jsonFileName, rGrid=None, nRadialBins=20):
+def getDensityProfile( jsonFileName, rGrid=None, nRadialBins=10):
     dataDir = '/Users/DavidHarvey/Documents/Work/WDM/data/withProjections/'
     
     haloName = jsonFileName.split('/')[-1].split('_')[0]
@@ -77,15 +151,74 @@ def getDensityProfile( jsonFileName, rGrid=None, nRadialBins=20):
     fitsFileName = 'cluster_0_'+projection+'_total_sph.fits'
     dataFileName = dataDir+haloName+'_EAGLE_CDM/'+redshift+'/HIRES_MAPS/'+fitsFileName
     data = fits.open(dataFileName)[0].data
-    radialBins = 10**np.linspace(-1, 2, nRadialBins+1)/0.1
-
+    radialBins = 10**np.linspace(1.,2., nRadialBins+1)
     density = np.zeros(nRadialBins)
     for iRadBin in range(nRadialBins):
         inBin = (rGrid  > radialBins[iRadBin]) & (rGrid < radialBins[iRadBin+1])
         area = np.pi*(radialBins[iRadBin+1]**2 - radialBins[iRadBin]**2)
-        density[ iRadBin ] =  np.mean( data[inBin] ) / area
+        density[ iRadBin ] =  np.sum( data[inBin] ) / area
 
     radialBinCenters = (radialBins[:-1] + radialBins[1:])/2.
+
     return np.log10(radialBinCenters), np.log10(density)
+
+
+def substructure( jsonFileName ):
+    '''
+    see if there is a halo in the projcted distance
+    '''
+    dataDir = '/Users/DavidHarvey/Documents/Work/WDM/data/withProjections/'
+    
+    haloName = jsonFileName.split('/')[-1].split('_')[0]
+    projection = jsonFileName.split('/')[-1].split('_')[3]
+    redshift = jsonFileName.split('/')[-2]
+    dataFileName = \
+      dataDir+haloName+'_EAGLE_CDM/'+redshift+\
+      '/GALAXY_CATALOGS/cluster_0_'+projection+'_galaxy_catalog.dat'
+
+    data = np.loadtxt(dataFileName, \
+            dtype=[('id',int), ('x', float), ('y', float), ('z', float), \
+                       ('mass', float), ('central', int)])
+
+    distance = np.sqrt( (data['x']-500)**2 +  (data['y']-500)**2)
+
+    distanceCutPixels = 200.
+    nHalos = len(distance[(distance < distanceCutPixels) & (data['mass'] > 7) ])
+    
+    return nHalos
+    
+def getAndPlotTrend( x, y, axis, fmt, color='grey', pltX=None, sigma=None):
+    
+    trendParams, cov = \
+      curve_fit( func, x, y, p0=[1.,1.], sigma=sigma)
+    pError = np.sqrt(np.diag(cov))
+    
+    percentInError = 1.
+    
+    while percentInError > 0.68:
+        
+    
+        pUpper = [trendParams[0]+pError[0], \
+                    trendParams[1]-pError[1]]
+        pLower = [trendParams[0]-pError[0], \
+                    trendParams[1]+pError[1]]
+
+        lower = func( x, *pLower)
+        upper = func( x, *pUpper)
+
+        percentInError = len(y[ (y - lower > 0) & (y - upper < 0) ])/len(y)
+        pError *= 0.9
+        
+    if pltX is None:
+        pltX = np.linspace(-1.1,-0.6)
+    axis.plot(  pltX, func(  pltX, *trendParams), fmt, color=color)
+
+    axis.fill_between( pltX, func( pltX, *pUpper), \
+                           func( pltX, *pLower), \
+                         alpha=0.3, color=color )
+    
+    
+
 if __name__ == '__main__':
     main()
+distance

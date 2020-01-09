@@ -186,7 +186,7 @@ def cleanMultipleImages(jsonFile, zSource=5.):
         data = {"timeDelay":newTimeDelays, "minCentralDistance":minCentralDistance, \
             "imageSeparation":imageSeparation, "magnificationRatio":magnificationRatio, \
             "minimumMagnification":minimumMagnification, \
-            "biasedTimeDelay":magBiasWeight*newTimeDelays}
+            "biasedTimeDelay":magBiasWeight}
         
         cleanData.append(data) 
     pkl.dump(cleanData, open(jsonFile+'.clean.pkl','wb'))

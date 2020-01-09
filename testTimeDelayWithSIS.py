@@ -121,10 +121,12 @@ def getExampleParameterDefinitions():
 
 if __name__ == '__main__':
     #testTimeDelayWithSIS(velocityDisperson=100)
-    testTimeDelayWithSIS(velocityDisperson=200)
+    #testTimeDelayWithSIS(velocityDisperson=200)
     #testTimeDelayWithSIS(velocityDisperson=250)
     #testTimeDelayWithSIS(velocityDisperson=300)
     #testTimeDelayWithSIS(velocityDisperson=350)
     #testTimeDelayWithSIS(velocityDisperson=400)
     #testTimeDelayWithSIS(velocityDisperson=450)
     #testTimeDelayWithSIS(velocityDisperson=500)
+    for i in range(1,10):
+        testTimeDelayWithNFW(m200=i*1e14)

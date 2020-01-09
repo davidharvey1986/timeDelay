@@ -7,7 +7,7 @@ def getHaloMass( filename, radialGrid=None):
         
     data = fits.open(filename)[0].data
     dPix = 1e-4*1e-4
-    haloMass =np.sum( data[ radialGrid < 500] )*dPix
+    haloMass = np.sum( data[ radialGrid < 500] )*dPix
     print('Halo mass is ', haloMass  / 1e12)
     return np.log10(haloMass)
 

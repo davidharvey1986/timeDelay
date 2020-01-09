@@ -17,15 +17,18 @@ def plotMagBiasedSISexample():
     
 def plotMagBiasedPDF():
     pklFile = '../output/CDM/combinedPDF_100.0.pkl'
-
+    
     pdf = pkl.load(open(pklFile, 'rb'))
     print(pdf.keys())
     dx = pdf['x'][1] - pdf['x'][0]
-    y = pdf['yLensPlane']/np.sum(pdf['yLensPlane'])/dx
+    yLens = pdf['yLensPlane']/np.sum(pdf['yLensPlane'])/dx
     yB = pdf['yBiasedLens']/np.sum(pdf['yBiasedLens'])/dx
+    yLoS = pdf['y']/np.sum(pdf['y'])/dx
 
-    plt.plot(pdf['x'],y )
+    plt.plot(pdf['x'],yLens )
     plt.plot(pdf['x'],yB, label='Bias')
+    plt.plot(pdf['x'],yLoS, label='LoS')
+
     plt.legend()
     #plt.yscale('log')
     plt.show()

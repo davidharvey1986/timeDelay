@@ -13,12 +13,13 @@ from matplotlib import gridspec
 from astropy.convolution import convolve, Gaussian1DKernel, Box1DKernel
 
 def main():
-    velocityDispersions =  np.linspace(200,350,4)
+    velocityDispersions =  np.linspace(200,300,3)
     color=['blue','green','purple','pink']
 
     gs = gridspec.GridSpec(5, 1)
     ax1 = plt.subplot(gs[:3,0])
     ax2 = plt.subplot(gs[3:, 0])
+    plt.subplots_adjust(hspace=0)
     for iColor, iVelocityDispersion in enumerate(velocityDispersions):
         jsonFileName = "../output/SISexample/SIS_example_z0.2_%i_5.0_4.0.json" % iVelocityDispersion
         if not os.path.isfile(jsonFileName):
@@ -36,30 +37,36 @@ def main():
                                     bins=np.linspace(-1,3,150) )
         xc -= np.log(0.94)
 
-        y = 1. - np.cumsum(y*(xc[1] - xc[0]))
-        yError = np.sqrt(np.cumsum(yError**2))
+        #y = 1. - np.cumsum(y*(xc[1] - xc[0]))
+        #yError = np.sqrt(np.cumsum(yError**2))
         ax1.errorbar( xc , y, yerr=yError,fmt='.', \
-                color=color[iColor], label='Numerical')
+                color=color[iColor], label=str(iVelocityDispersion)+' km/s')
         
 
         xAnalytical, yAnalytical = getAnalyticExpression( xc, iVelocityDispersion, zSource=5., zLens=0.2 )
-        yAnalytical = 1. - np.cumsum(yAnalytical)*(xAnalytical[1]-xAnalytical[0])
+        #yAnalytical = 1. - np.cumsum(yAnalytical)*(xAnalytical[1]-xAnalytical[0])
 
         
         ax1.plot(xAnalytical, yAnalytical,':', \
-                     color=color[iColor], label='Analytical')
-        ax2.errorbar( xc, y-yAnalytical,  \
+                     color=color[iColor])
+        ax2.errorbar( xc, np.log10(y)-np.log10(yAnalytical),  \
                           fmt='-', color=color[iColor])
-        
 
-
+    ax1.plot(0,0,':',label='Analytical')
+    ax1.legend()
+    ax1.set_xticklabels([])
+    
     ax1.set_xlabel(r'$log(\Delta t)$')
     ax1.set_ylabel(r'p($log(\Delta t)$)')
-    ax1.set_xlim(0.,2.2)
-    ax2.set_ylim(-0.1,0.1)
+    ax2.set_ylabel(r'$\Delta$log(p(log($\Delta t$)) )')
 
-    ax2.set_xlim(0.,2.2)
-    ax2.plot([0., 2.2], [1.,1.], '--')
+    ax2.set_ylim(-0.15,0.15)
+    ax1.set_yscale('log')
+    ax1.set_xlim(0.25,1.85)
+    ax1.set_ylim(0.07,5.)
+
+    ax2.set_xlim(0.25,1.85)
+    ax2.plot([0., 2.2], [0.,0.], '--')
 
     
     plt.savefig('../plots/analyseSIS.pdf')
@@ -98,7 +105,7 @@ def getAnalyticExpression( logTimeDelay, velocityDispersion, zSource=1., zLens=0
     
 
     timeDelayOnePixel = dy / 10**maxTimeDelay
-    kernelSize = 3 #timeDelayOnePixel/dX
+    kernelSize = 3. #timeDelayOnePixel/dX
 
 
     #pdb.set_trace()

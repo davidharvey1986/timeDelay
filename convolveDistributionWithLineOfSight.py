@@ -1,5 +1,6 @@
 #!/usr/local/bin/python3
 from timeDelayDistributionClass import *
+from plotAsFunctionOfDensityProfile import *
 
 def getMagBiasedPDFs():
     dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
@@ -46,7 +47,9 @@ def combineMassBins( ):
     allMasses = {'mass':np.zeros(nJsonFiles), 'json':allJsonFiles }
     rGrid = getRadGrid()
     for i, iJson in enumerate(allJsonFiles):
-        
+        nHalos = substructure(iJson)
+        if nHalos > 1:
+            continue
         allMasses['json'] = np.append(allMasses['json'], iJson)
         redshift = iJson.split('/')[-2]
         halo = iJson.split('/')[-1].split('_')[0]
@@ -65,6 +68,7 @@ def combineMassBins( ):
     
     nMassBins = 4
     jsonsPerMassBin = np.floor(nJsonFiles/nMassBins)
+    
     for iMassBin in np.arange(nMassBins):
 
         samplesLo = np.int(jsonsPerMassBin*iMassBin)
@@ -198,7 +202,7 @@ def saveAllRedshifts( rerun=False, integrate=False):
         
       
     
-def combineJsonFiles( listOfJsonFiles, newHubbleParameter=100.0, zLens=None ):
+def combineJsonFiles( listOfJsonFiles, newHubbleParameter=100.0, zLens=None):
     '''
     Combine the given list of Json Files into a single 
     histogram.
@@ -207,6 +211,7 @@ def combineJsonFiles( listOfJsonFiles, newHubbleParameter=100.0, zLens=None ):
     then find the weight mean and variance of these where the weight is te 
     source and lens plane confihuration.
     
+    Choose a source plane if rquired.
     '''
 
     timeDelayBins = None #np.linspace(-2,3,100)
@@ -218,9 +223,10 @@ def combineJsonFiles( listOfJsonFiles, newHubbleParameter=100.0, zLens=None ):
            timeDelayDistribution( iJsonFile, \
                 newHubbleParameter=newHubbleParameter, \
                 timeDelayBins=timeDelayBins,zLens=zLens)
-         
 
+         
          for iSourcePlane in cluster.finalPDF['finalLoS']:
+             
 
              iWeight = np.repeat(iSourcePlane.data['weight'],len(matchToThisXaxis))
              #they dont all have the same x, so match to that
@@ -230,8 +236,7 @@ def combineJsonFiles( listOfJsonFiles, newHubbleParameter=100.0, zLens=None ):
 
              iMatchBiasedPdf = \
                iSourcePlane.interpolateGivenPDF( matchToThisXaxis, \
-                                    iSourcePlane.biasedTimeDelayWithLineOfSightPDF )\
-
+                                    iSourcePlane.biasedTimeDelayWithLineOfSightPDF )
                                     
              iMatchLensOnlyPdf = \
                iSourcePlane.interpolateGivenPDF( matchToThisXaxis, \
@@ -285,11 +290,11 @@ def combineJsonFiles( listOfJsonFiles, newHubbleParameter=100.0, zLens=None ):
 
 
     #Weighted error.
-    finalMergedPDFerror = np.sqrt(np.nansum(weightTable*diffTableFinal**2, axis=0)/np.nansum(weightTable)/nFluxRatios)
-    finalMergedBiasedPDFerror = np.sqrt(np.nansum(weightTable*diffTableBiasedFinal**2, axis=0)/np.nansum(weightTable)/nBiasedFluxRatios)
+    finalMergedPDFerror = np.sqrt(np.nansum(weightTable*diffTableFinal**2, axis=0)/np.nansum(weightTable)/nFluxRatios**2)
+    finalMergedBiasedPDFerror = np.sqrt(np.nansum(weightTable*diffTableBiasedFinal**2, axis=0)/np.nansum(weightTable)/nBiasedFluxRatios**2)
     
-    lensPlanePDFerror = np.sqrt(np.nansum(weightTable*diffTableLensOnly**2, axis=0)/np.nansum(weightTable)/nFluxRatios)
-    biasedLensPDFerror = np.sqrt(np.nansum(weightTable*diffTableBiasLens**2, axis=0)/np.nansum(weightTable)/nFluxRatios)
+    lensPlanePDFerror = np.sqrt(np.nansum(weightTable*diffTableLensOnly**2, axis=0)/np.nansum(weightTable)/nFluxRatios**2)
+    biasedLensPDFerror = np.sqrt(np.nansum(weightTable*diffTableBiasLens**2, axis=0)/np.nansum(weightTable)/nFluxRatios**2)
 
     
     #normalise it as well
@@ -339,13 +344,13 @@ def convolveTimeDelayDistributionWithLineOfSight( inputJsonFile ):
 
 
 if __name__ == "__main__":
-    getMagBiasedPDFs()
+    #getMagBiasedPDFs()
     #saveMassSheetsAsPickles()
-    combineMassBins( )
+    #combineMassBins( )
     #forcedRedshiftHalos( rerun=True)
     saveAllRedshifts( rerun=True)
-    saveAllRedshifts( rerun=True, integrate=False)
-    saveIndividualHalosAndRedshifts( rerun=True)
-    saveIndividualHalos( rerun=True)
+    ##saveAllRedshifts( rerun=True, integrate=False)
+    #saveIndividualHalosAndRedshifts( rerun=True)
+    #saveIndividualHalos( rerun=True)
     saveAllLensesForMultipleHubbleParameters( rerun=True)
 

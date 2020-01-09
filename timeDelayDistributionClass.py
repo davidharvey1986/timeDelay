@@ -83,7 +83,10 @@ class timeDelayDistribution:
             
         for iSourcePlaneIndex in range(len(jsonData)):
             iSourcePlane = jsonData[iSourcePlaneIndex]
-            iTimeDelayData = cleanTimeDelayData[iSourcePlaneIndex]
+            try:
+                iTimeDelayData = cleanTimeDelayData[iSourcePlaneIndex]
+            except:
+                pdb.set_trace()
             iSourcePlaneDist = \
                   singleSourcePlaneDistribution( self.zLens, \
                             iSourcePlane, iTimeDelayData, \
@@ -148,9 +151,7 @@ class singleSourcePlaneDistribution:
     def getMagnificationBias( self ):
         
         self.magBias= magnificationBias( self.zSource,  self.minMagnification)
-        
-        
-
+    
         
     def getTimeDelayDistance( self, HubbleConstant, omegaLambda=1.0):
         '''
@@ -177,9 +178,10 @@ class singleSourcePlaneDistribution:
         '''
         secondsToDays = 1./60./60./24.
 
-         
+
         minMagRatioIndexes = \
-            self.timeDelayData['timeDelay'] > minMagRatio
+            (self.timeDelayData['magnificationRatio'] > minMagRatio) & \
+            (self.timeDelayData['minCentralDistance'] > 1.)
 
         #Minus the dependecncy on h
         self.logDoubleTimeDelay = \
@@ -198,8 +200,8 @@ class singleSourcePlaneDistribution:
         
         #self.getMagnificationBias()
         self.magBias = \
-            self.timeDelayData['timeDelay'][minMagRatioIndexes]/\
-            self.timeDelayData['biasedTimeDelay'][minMagRatioIndexes]
+            self.timeDelayData['biasedTimeDelay'][minMagRatioIndexes]/\
+            self.timeDelayData['timeDelay'][minMagRatioIndexes]
 
         if self.timeDelayBins is None:
             timeDelayRange =  \
@@ -223,21 +225,21 @@ class singleSourcePlaneDistribution:
         #Since the effective is polar and we are in cartesian
         #I need to weight the timedelays
         centralisationWeight = \
-            1./data['minCentralDistance'][minMagRatioIndexes]**2
-        y, x = \
-            np.histogram( self.logDoubleTimeDelay, \
+            1./self.timeDelayData['minCentralDistance'][minMagRatioIndexes]**2
+        y, x = np.histogram( self.logDoubleTimeDelay, \
                           bins=self.timeDelayBins, density=True, \
                           weights=centralisationWeight)
         xc = (x[1:] + x[:-1])/2.
         dX = x[1:] - x[:-1]
-        print("Magnification bias is :", self.magBias)
+
+        #Removing calibartion
+        xc -= np.log(0.94)
 
         yBiased, xBiased = \
             np.histogram( self.logDoubleTimeDelay, \
                           bins=self.timeDelayBins, density=True, \
                           weights=self.magBias*centralisationWeight )
-        xc = (x[1:] + x[:-1])/2.
-        dX = x[1:] - x[:-1]
+
         
         self.timeDelayPDF = {'x':xc, 'y':y, 'dX':self.dDeltaTimeDelay}
         

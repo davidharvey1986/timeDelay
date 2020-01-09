@@ -2,7 +2,7 @@ import lensing as l
 from matplotlib import pyplot as plt
 import numpy as np
 import pyfits as fits
-def main( m200=1e14, redshift=0.3):
+def main( m200=1e15, redshift=0.3):
     '''
     Create a 2D projected density map of an NFW, 
     with a concentration along the m-c relation

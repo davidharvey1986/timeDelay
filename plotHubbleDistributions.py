@@ -36,9 +36,6 @@ def plotMassBins():
     allBeta = []
     allPeakTimes = []
     for iColor, iMassBin in enumerate(allMassBins):
-        #if iRedshift == 'z_0.25':
-        #    continue
-
         
         pklFileName = '../output/CDM/massBin_'+iMassBin+'.pkl'
         if not os.path.isfile( pklFileName):
@@ -132,17 +129,14 @@ def differentLensRedshiftsSingleHubble():
             print("No pickle file found (%s) "%pklFileName)
             continue
         
-        finalMergedPDFdict['y'] /= np.max(finalMergedPDFdict['y'])
-        
-        
-        axisA.plot(finalMergedPDFdict['x'],finalMergedPDFdict['y'], \
+        axisA.plot(finalMergedPDFdict['x'],finalMergedPDFdict['yBiased'], \
                      label=r"%s" % iRedshift.split('_')[1], color=colors[iColor])
         #axisA.plot(integratedFinalMergedPDFdict['x']+2.56,integratedFinalMergedPDFdict['y'], \
         #              ls='--', color=colors[iColor])
 
         
         #####FIT POWER LAW TO THE DISTRIBUTION##############
-        powerLawFitClass = powerLawFit( finalMergedPDFdict )
+        powerLawFitClass = powerLawFit( finalMergedPDFdict, inputYvalue='y', yMin=0 )
                                              
         ######################################################
 
@@ -162,7 +156,7 @@ def differentLensRedshiftsSingleHubble():
 
     #axisB.plot( plotRedshifts, plotPrediction, 'k--', label=r'$\Gamma \propto D_{\rm S}/D_{\rm L}$')
     #h2h.oplotEnsembleDistribution(axisA, None)
-    axisB.set_xlim(0.1,0.8)
+    axisB.set_ylim(0.8,1.4)
     axisA.legend(title=r"$z_{\rm lens}$")
     #axisB.legend()
     axisA.set_yscale('log')
@@ -175,6 +169,8 @@ def differentLensRedshiftsSingleHubble():
     axisA.set_ylabel(r'P(log[$\Delta t$]) / P(log[$\Delta t_{\rm peak}$])')
 
     axisA.set_xlim(-2.,3.)
+    axisB.set_xlim(0.1,0.8)
+
     axisA.set_ylim(1e-2,2.)
     axisB.set_xlabel('Lens Redshift')
     axisB.set_ylabel(r'$\beta$')
@@ -197,26 +193,29 @@ def compareConvolvedToUnconvolvedLoS():
     pklFileName = '../output/CDM/combinedPDF_100.0.pkl'
     finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
 
-    finalMergedPDFdict['y'] /= np.max(finalMergedPDFdict['y'])
-    finalMergedPDFdict['yLensPlane'] /= np.max(finalMergedPDFdict['yLensPlane'])
+    dx = finalMergedPDFdict['x'][1] - finalMergedPDFdict['x'][0]
+    finalMergedPDFdict['y'] /= np.sum(finalMergedPDFdict['y'])*dx
+    finalMergedPDFdict['yLensPlane'] /= np.sum(finalMergedPDFdict['yLensPlane'])*dx
     
     pdfInLinearTime = finalMergedPDFdict['y'] / ( 10**finalMergedPDFdict['x']*np.log(10.) )
     colors = ['orange','black']
-    for i, iMicro in enumerate([1., 20.]):
+    microLensing = [1.,2]
+    for i, iMicro in enumerate(microLensing):
         pdfInLinearTimeSmoothed = gauss( pdfInLinearTime, iMicro)
         pdfInLogTimeSmoothed = pdfInLinearTimeSmoothed * ( 10**finalMergedPDFdict['x']*np.log(10.) )
         finalMergedPDFdict['microLensing'] = pdfInLogTimeSmoothed
+    
         axisA.plot( finalMergedPDFdict['x'], finalMergedPDFdict['microLensing'], \
                         label='Microlensing (%i day(s))' % iMicro, color=colors[i])
 
-        axisB.plot(finalMergedPDFdict['x'], finalMergedPDFdict['microLensing']/finalMergedPDFdict['yLensPlane'],\
+        axisB.plot(finalMergedPDFdict['x'], finalMergedPDFdict['microLensing']-finalMergedPDFdict['yLensPlane'],\
                     color=colors[i])
     
     plotPDF( finalMergedPDFdict, 'red', 'Without LoS', axisA, yType='yLensPlane', nofill=True )
-    plotPDF( finalMergedPDFdict, 'green', 'With LoS', axisA, nofill=True )
+    plotPDF( finalMergedPDFdict, 'green', 'With LoS', axisA, yType='y', nofill=True )
 
 
-    ratio = finalMergedPDFdict['y']/finalMergedPDFdict['yLensPlane']
+    ratio = finalMergedPDFdict['y']-finalMergedPDFdict['yLensPlane']
 #    ratioError = np.sqrt( (finalMergedPDFdict['yError']/finalMergedPDFdict['y'])**2 + \
  #     (finalMergedPDFdict['yLensPlaneError']/finalMergedPDFdict['yLensPlane'])**2 ) *ratio
 
@@ -232,19 +231,19 @@ def compareConvolvedToUnconvolvedLoS():
 
 
        
-    axisB.plot([0,4],[1,1],'k--')
+    axisB.plot([-1,1.5],[0,0],'k--')
     axisA.legend()
-    axisA.set_yscale('log')
+    
  
     axisB.set_xlabel(r'log($\Delta t$/ days)')
-    axisA.set_ylabel(r'P(log[$\Delta t$]) / P(log[$\Delta t_{\rm peak}$])')
+    axisA.set_ylabel(r'P(log[$\Delta t$])')
 
-    axisB.set_ylabel(r'$P/P_{\rm int}$')
+    axisB.set_ylabel(r'$P-P_{\rm int}$')
 
-    axisA.set_xlim(-2.,3.)
-    axisB.set_xlim(-2.,3.)
-    axisA.set_ylim(1e-2,2.)
-    axisB.set_ylim(0.5,1.5)
+    axisA.set_xlim(-1.,1.5)
+    axisB.set_xlim(-1.,1.5)
+    axisA.set_ylim(1e-2,1.5)
+    axisB.set_ylim(-0.3,0.3)
     #axisB.set_yscale('log')
     axisA.set_xticklabels([])
 
@@ -280,14 +279,12 @@ def allLensesDifferentHubbleValues():
         else:
             raise ValueError("No pickle file found (%s) "%pklFileName)
         
-        finalMergedPDFdict['yError'] /= np.max(finalMergedPDFdict['y'])
-        finalMergedPDFdict['y'] /= np.max(finalMergedPDFdict['y'])
-
+     
         plotPDF( finalMergedPDFdict, colors[iColor], \
-        r"H0=%i kms/Mpc" % iHubbleParameter, axisA, yType='yBiased', nofill=False )
+            r"H0=%i kms/Mpc" % iHubbleParameter, axisA, yType='yBiased', nofill=False )
 
         #####FIT POWER LAW TO THE DISTRIBUTION##############
-        powerLawFitClass = powerLawFit( finalMergedPDFdict )
+        powerLawFitClass = powerLawFit( finalMergedPDFdict, inputYvalue='yBiased'  )
         
         allBeta.append(powerLawFitClass.params['params'][1])
         allBetaError.append(powerLawFitClass.params['error'][1])
@@ -333,7 +330,7 @@ def allLensesDifferentHubbleValues():
     axisA.set_ylabel(r'P(log[$\Delta t$]) / P(log[$\Delta t_{\rm peak}$])')
 
     axisA.set_xlim(-2.,3.)
-    axisA.set_ylim(1e-2,2.)
+    #axisA.set_ylim(1e-2,2.)
     plt.savefig('../plots/allLensesDifferentHubbleValues.pdf')
     plt.show()
 
@@ -353,7 +350,7 @@ def plotPDF( PDF, color, label, axisA, yType='yBiasedLens', nofill=False ):
 
 
     bigError = (PDF[yType+'Error'] > PDF[yType]) 
-
+    
     PDF[yType][ PDF[yType] == 0] = 1e-9
     PDF[yType+'Error'][ PDF[yType+'Error'] == 0] = 1e-10
          
@@ -361,13 +358,13 @@ def plotPDF( PDF, color, label, axisA, yType='yBiasedLens', nofill=False ):
       PDF[yType][bigError]*0.99
 
     if not nofill:
-        axisA.fill_between( PDF['x']- np.log(0.94), \
+        axisA.fill_between( PDF['x'], \
                             PDF[yType] + PDF[yType+'Error']/2.,  \
                             PDF[yType] - PDF[yType+'Error']/2.,
                             color=color, alpha=0.5)
 
     #calibration
-    axisA.plot(PDF['x'] - np.log(0.94),PDF[yType],label=label, color=color)
+    axisA.plot(PDF['x'],PDF[yType],label=label, color=color)
 
 
     
@@ -400,9 +397,9 @@ def getAndPlotTrend( x, y, axis, fmt):
 
     
 if __name__ == '__main__':
-    plotMassBins()
+    #plotMassBins()
     #compareConvolvedToUnconvolvedLoS()
     #allLensesDifferentHubbleValues()
-    #differentLensRedshiftsSingleHubble()
+    differentLensRedshiftsSingleHubble()
 
 
