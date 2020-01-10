@@ -399,7 +399,7 @@ def getAndPlotTrend( x, y, axis, fmt):
 if __name__ == '__main__':
     #plotMassBins()
     #compareConvolvedToUnconvolvedLoS()
-    #allLensesDifferentHubbleValues()
-    differentLensRedshiftsSingleHubble()
+    allLensesDifferentHubbleValues()
+    #idfferentLensRedshiftsSingleHubble()
 
 

@@ -110,15 +110,17 @@ class luminosityFunction():
     '''
 
     def __init__( self, redshift, limitingObsMag = 27):
-        cosmo = {'omega_M_0' : 0.3, 'omega_lambda_0' : 0.7, 'h' : 0.7}
-        cosmo = distance.set_omega_k_0(cosmo)    
+        self.cosmo = {'omega_M_0' : 0.3, 'omega_lambda_0' : 0.7, 'h' : 0.7}
+        self.cosmo = distance.set_omega_k_0(self.cosmo)    
 
-        distancePc = distance.luminosity_distance(redshift, **cosmo)*1e6
+        distancePc = \
+          distance.luminosity_distance(redshift, **self.cosmo)*1e6
         
         limitingAbsoluteMag = limitingObsMag - \
-          5.*np.log10(distancePc) - 5
+          5.*np.log10(distancePc) + 5
+        print(redshift,limitingAbsoluteMag)
         self.magnitudes = np.linspace(-28, limitingAbsoluteMag, 10000)
-        
+        self.dMag = self.magnitudes[1] - self.magnitudes[0]
         self.redshift=redshift
         self.getLuminosityStar()
         self.getMagnitudeStar()

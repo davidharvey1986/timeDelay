@@ -16,17 +16,23 @@ def main():
     allFiles = glob.glob(dirD+'/CDM/z*/B*_cluster_*_*.json')
     
 
-    hubbleParameter = 70.
+    hubbleParameter = \
+      np.array([50., 60., 70., 80., 90., 100.])
+
     zMed = np.linspace(1.5, 2.5, 11)
-    for izMed in zMed:
-        pklFileName = '../output/CDM/selectionFunction/SF_%0.2f.pkl' \
-          % (izMed )
+    hubbleParameter = [70.]
+    for iHubble in hubbleParameter:
+        for izMed in zMed:
+            pklFileName = \
+              '../output/CDM/selectionFunction/SF_%i_%0.2f.pkl' \
+              % (iHubble, izMed )
       
-        finalMergedPDFdict = \
-          selectionFunction(allFiles, newHubbleParameter=hubbleParameter,\
+            finalMergedPDFdict = \
+              selectionFunction(allFiles, \
+                            newHubbleParameter=iHubble,\
                             medianRedshift=izMed )
 
-        pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
+            pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
 
     
 
@@ -40,29 +46,31 @@ def selectionFunction( listOfJsonFiles, newHubbleParameter=None, \
     then find the weight mean and variance of these where the weight is te 
     source and lens plane confihuration.
     
+    Using the biased pdf
     '''
 
 
     allFinalMergedPDF = None
-    matchToThisXaxis = None
+    matchToThisXaxis = np.linspace(-2,3,150)
     for iJsonFile in listOfJsonFiles:
          cluster = timeDelayDistribution( iJsonFile, newHubbleParameter=newHubbleParameter)
          if matchToThisXaxis is None:
-            matchToThisXaxis = cluster.finalPDF['finalLoS'][0].timeDelayWithLineOfSightPDF['x']
-
+            matchToThisXaxis = \
+              cluster.finalPDF['finalLoS'][0].biasedTimeDelayWithLineOfSightPDF['x']
+         z0 = cluster.zLens
          for iSourcePlane in cluster.finalPDF['finalLoS']:
              print(iSourcePlane.data['z'])
              selectionFunction = \
                getSourceRedshiftWeight( iSourcePlane.data['z'], medianRedshift)
-               
+             dZ = iSourcePlane.data['z'] - z0
              iWeight = \
                np.repeat(iSourcePlane.data['weight'],\
                              len(matchToThisXaxis))*\
-                    selectionFunction
-
+                    selectionFunction*dZ
+             z0 = iSourcePlane.data['z']
              #they dont all have the same x, so match to that
-             iMatchPdf = iSourcePlane.interpolateGivenPDF( matchToThisXaxis, iSourcePlane.timeDelayWithLineOfSightPDF )
-             iMatchLensOnlyPdf = iSourcePlane.interpolateGivenPDF( matchToThisXaxis, iSourcePlane.timeDelayPDF )
+             iMatchPdf = iSourcePlane.interpolateGivenPDF( matchToThisXaxis, iSourcePlane.biasedTimeDelayWithLineOfSightPDF )
+             iMatchLensOnlyPdf = iSourcePlane.interpolateGivenPDF( matchToThisXaxis, iSourcePlane.biasedTimeDelayPDF )
 
              
              if allFinalMergedPDF is None:
@@ -105,9 +113,12 @@ def selectionFunction( listOfJsonFiles, newHubbleParameter=None, \
     lensPlaneMergedPDF /= np.sum(lensPlaneMergedPDF*dX)
 
     
-    finalMergedPDFdict = { 'x':matchToThisXaxis, 'y':finalMergedPDF, 'yError':finalMergedPDFerror,\
-                               'yLensPlane':lensPlaneMergedPDF, 'yLensPlaneError':lensPlanePDFerror,
-                               'nFluxRatios':nFluxRatios}
+    finalMergedPDFdict = \
+      { 'x':matchToThisXaxis, 'y':finalMergedPDF, \
+        'yError':finalMergedPDFerror,\
+        'yLensPlane':lensPlaneMergedPDF, \
+        'yLensPlaneError':lensPlanePDFerror,
+      'nFluxRatios':nFluxRatios}
 
     return finalMergedPDFdict
 

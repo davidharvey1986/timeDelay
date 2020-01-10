@@ -78,7 +78,6 @@ def combineMassBins( ):
 
         finalMergedPDFdict = combineJsonFiles(halosInMassBin, newHubbleParameter=70.)
         pklFileName = dirD+'/massBin_%0.5f.pkl' % meanMass
-        print(pklFileName)
         pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
 
 
@@ -227,8 +226,9 @@ def combineJsonFiles( listOfJsonFiles, newHubbleParameter=100.0, zLens=None):
          
          for iSourcePlane in cluster.finalPDF['finalLoS']:
              
-
+             #This weight is due to the volume at a given redshift,
              iWeight = np.repeat(iSourcePlane.data['weight'],len(matchToThisXaxis))
+
              #they dont all have the same x, so match to that
              iMatchPdf = \
                iSourcePlane.interpolateGivenPDF( matchToThisXaxis, \
@@ -349,7 +349,7 @@ if __name__ == "__main__":
     #combineMassBins( )
     #forcedRedshiftHalos( rerun=True)
     saveAllRedshifts( rerun=True)
-    ##saveAllRedshifts( rerun=True, integrate=False)
+    saveAllRedshifts( rerun=True, integrate=False)
     #saveIndividualHalosAndRedshifts( rerun=True)
     #saveIndividualHalos( rerun=True)
     saveAllLensesForMultipleHubbleParameters( rerun=True)

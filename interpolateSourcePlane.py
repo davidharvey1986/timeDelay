@@ -172,7 +172,7 @@ class sourcePlaneInterpolator:
             
 
             self.pca = PCA(n_components=self.nPrincipalComponents)
-        
+            pdb.set_trace()
 
         #Extract the PCA from the PDFs
             self.pca.fit( self.featureArray[index,:] )
