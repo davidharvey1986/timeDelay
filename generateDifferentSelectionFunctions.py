@@ -8,7 +8,34 @@ from convolveDistributionWithLineOfSight import *
 from scipy.stats import lognorm
 
 import lsstSelectionFunction as lsstSelect
-def main(useLsst=True):
+
+def selectionFunctionIndividualLenses( ):
+    dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
+             
+    allFiles = glob.glob(dirD+'/CDM/z*/B*_cluster_0_*.json')
+    
+    hubbleParameters = \
+      np.array([50., 60., 70., 80., 90., 100.])
+    #hubbleParameter = 70.
+
+    for hubbleParameter in hubbleParameters:
+        
+        for iFile in allFiles:
+  
+            
+            fileName = iFile.split('/')[-1]
+            pklFileName = \
+              '../output/CDM/selectionFunction/SF_%s_%i_lsst.pkl' \
+              % (fileName, hubbleParameter )
+            finalMergedPDFdict = \
+              selectionFunction([iFile], \
+                                newHubbleParameter=hubbleParameter,\
+                                useLsst = True)
+                                
+            pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
+       
+
+def selectFunctionForAllLenses(useLsst=True):
     
     
     dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
@@ -168,4 +195,4 @@ def getSourceRedshiftWeight( z, zMed=1.0 ):
     return weight
 
 if __name__ == "__main__":
-    main()
+    selectionFunctionIndividualLenses()

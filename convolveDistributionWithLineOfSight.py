@@ -88,8 +88,6 @@ def saveIndividualHalos(rerun=False):
 
     for iHalo in haloNames:
         individualHaloFiles = glob.glob(dirD+'/CDM/*/'+iHalo+'*cluster_0_*_total_*.json')
-        #Remove z=0.74 as its fucking things up
-
 
         
         pklFileName = '../output/CDM/combinedPDF_'+iHalo+'.pkl'
@@ -98,7 +96,7 @@ def saveIndividualHalos(rerun=False):
         if os.path.isfile(pklFileName)  & (not rerun) :
             continue
         else:
-            finalMergedPDFdict = combineJsonFiles(individualHaloFiles, newHubbleParameter=100.)
+            finalMergedPDFdict = combineJsonFiles(individualHaloFiles, newHubbleParameter=70.)
 
             pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
 
