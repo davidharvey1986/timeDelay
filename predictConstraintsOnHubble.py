@@ -11,16 +11,29 @@ from interpolateSourcePlane import *
 import fitHubbleParameter as fitHubble
 from scipy.interpolate import CubicSpline
 from scipy.stats import kurtosis
-
+import corner as corner
 
 def nonPerfectFittingFunction(nComponents=4):
     inputHubbleParameter = 70.
+    pklFile = 'multiParameterFit.pkl'
+    if os.path.isfile(pklFile):
+        sampleSizes, estimates = pkl.load(open(pklFile, 'rb'))
+    else:
+        sampleSizes, estimates = \
+          getPredictedConstraints(inputHubbleParameter)
+        pkl.dump([sampleSizes, estimates], open(pklFile, 'wb'))
+      
+    plt.plot( sampleSizes[:-1], np.std(estimates, axis=1)[:-1]/inputHubbleParameter*100.)
+    pdb.set_trace()
+    plt.yscale('log')
+    plt.xscale('log')
 
-    sampleSizes, estimates = \
-      getPredictedConstraints(inputHubbleParameter)
 
-
-def perfectFittingFunction(nComponents=4):
+    plt.xlabel('nSamples')
+    plt.ylabel(r'$\sigma_{H_0}/H_0$')
+    plt.show()
+    
+def perfectFittingFunction(nComponents=5):
 
 
     inputHubbleParameter = 70.
@@ -42,8 +55,8 @@ def perfectFittingFunction(nComponents=4):
     plt.show()
 
 def getPredictedConstraints(inputHubbleParameter, \
-                                nIterations = 100,\
-                                nSampleSizes = 10):
+                                nIterations = 10,\
+                                nSampleSizes = 11):
                                 
     hubbleInterpolaterClass = hubbleInterpolator()
     hubbleInterpolaterClass.getTrainingData()
@@ -51,10 +64,10 @@ def getPredictedConstraints(inputHubbleParameter, \
     hubbleInterpolaterClass.learnPrincipalComponents()
 
     predictFeatures = hubbleInterpolaterClass.reshapedFeatures
-    print(predictFeatures[:,0])
-    #predictFeatures = predictFeatures[ (predictFeatures[:,0] == 70) & (predictFeatures[:,1] == 0.74), :]
+    #print(predictFeatures[:,0])
+    #predictFeatures = predictFeatures[ (predictFeatures[:,0] == 0.7) & (predictFeatures[:,1] == 0.74), :]
 
-    
+    #predictFeatures[:,2] = np.linspace(-1.,-2.,predictFeatures.shape[0])
     #hubbleInterpolaterClass.plotPredictedPDF( predictFeatures )
 
     sampleSizes = 10**np.linspace(2,4,nSampleSizes)
@@ -62,28 +75,32 @@ def getPredictedConstraints(inputHubbleParameter, \
 
     
     estimates = np.zeros((nSampleSizes, nIterations))
+    
     for i, iSampleSize in enumerate(sampleSizes):
-        
+        samples = None
         for iIteration in range(nIterations):
             print("Sample Size: %i/%i, iteration: %i/%i" %\
                       (i+1, nSampleSizes, iIteration+1, nIterations))
             selectedTimeDelays = \
-              selectionFunctionZmed( iSampleSize, inputHubbleParameter)
+              selectionFunctionZmed( iSampleSize, inputHubbleParameter, hubbleInterpolaterClass)
       
             fitHubbleClass = \
               fitHubble.fitHubbleParameterClass( selectedTimeDelays, \
                                     hubbleInterpolaterClass)
+
+            if samples is None:
+                samples = fitHubbleClass.samples
+            else:
+                samples = np.vstack( (samples, fitHubbleClass.samples))
+                
             estimates[i,iIteration] = \
               fitHubbleClass.params['params'][0]
-
-
-    pkl.dump([sampleSizes, estimates], \
-        open('perfectFittingFunction.pkl','wb'))
-
+        pkl.dump(samples, open('pickles/multiFitSamples_%i.pkl' % iSampleSize))
+        
     return sampleSizes, estimates
 
 
-def selectionFunctionZmed( nSamples, hubbleParameter ):
+def selectionFunctionZmed( nSamples, hubbleParameter, hubbleInterpolaterClass ):
     '''
     From a given pdf randomly select some time delays
     '''
@@ -91,24 +108,42 @@ def selectionFunctionZmed( nSamples, hubbleParameter ):
     pklFileName = \
       '../output/CDM/selectionFunction/SF_%i_lsst.pkl' \
       % (hubbleParameter)
+
+
     finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
 
-    #Interpolate the p
-    p = finalMergedPDFdict['y'] / np.sum(finalMergedPDFdict['y'])
-    interpolatedProbClass = CubicSpline( finalMergedPDFdict['x'], p)
-    interpolateToTheseTimes=  np.linspace(np.min(finalMergedPDFdict['x']),np.max(finalMergedPDFdict['x']),nSamples*100)
-    interpolatedProb = interpolatedProbClass( interpolateToTheseTimes)
+
+
+    #interpolatedProbClass = CubicSpline( finalMergedPDFdict['x'], p)
+    interpolateToTheseTimes=  \
+      np.linspace(np.min(finalMergedPDFdict['x']), np.max(finalMergedPDFdict['x']),nSamples*100)
+    interpolateToTheseTimes=  \
+      np.linspace(-3, 4, nSamples*100)
+    interpolatedProb = \
+      hubbleInterpolaterClass.predictPDF( interpolateToTheseTimes, np.array([0.7, 0.2, -1.9] ))
+
+    #interpolatedProb = interpolatedProbClass( interpolateToTheseTimes)
     interpolatedProb[interpolatedProb<0] = 0
     interpolatedProb /= np.sum(interpolatedProb)
+    
+    #Interpolate the p
+    
+    
     logTimeDelays = \
       np.random.choice(interpolateToTheseTimes, \
                     p=interpolatedProb, size=np.int(nSamples))
     
     bins = np.max([10, np.int(nSamples/100)])
-    y, x = np.histogram(logTimeDelays, bins=np.int(bins), density=True)
-    xcentres = (x[1:] + x[:-1])/2.
+    y, x = np.histogram(logTimeDelays, bins=np.linspace(-3,4,100), density=True)
+    dX = (x[1] - x[0])
+    xcentres = (x[1:] + x[:-1])/2. + dX/2.
     error = np.sqrt(y*nSamples)/nSamples
-    return {'x':xcentres, 'y':y, 'error':error}
+
+    cumsumY = np.cumsum( y )  / np.sum(y)
+    cumsumYError = np.sqrt(np.cumsum(error**2))/np.sqrt(np.arange(len(error))+1) 
+
+    
+    return {'x':xcentres, 'y':cumsumY, 'error':cumsumYError}
 
 class hubbleInterpolator:
     '''
@@ -133,7 +168,7 @@ class hubbleInterpolator:
             self.features,  self.timeDelays, self.pdfArray =  \
               pkl.load(open(pklFile, 'rb'))
             self.nFeatures = len(self.features.dtype)
-
+            self.features['hubbleParameter'] /= 100.
             return
         
         self.timeDelayDistClasses = []
@@ -152,9 +187,12 @@ class hubbleInterpolator:
         for iColor, iHubbleParameter in enumerate(self.hubbleParameters):
             for iFile in allFiles:
                 fileName = iFile.split('/')[-1]
+                zLensStr = fileName.split('/')[-2]
+                zLens = np.float(zLensStr.split('_')[1])
+
                 pklFileName = \
-                  '../output/CDM/selectionFunction/SF_%s_%i_lsst.pkl' \
-                  % (fileName, iHubbleParameter )
+                  '../output/CDM/selectionFunction/SF_%s_%s_%i_lsst.pkl' \
+                  % (zLensStr,fileName,iHubbleParameter )
               
             
                 finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
@@ -167,7 +205,6 @@ class hubbleInterpolator:
                       np.vstack((self.pdfArray, finalMergedPDFdict['y']))
 
                 densityProfile = getDensity.getDensityProfileIndex(iFile, rGrid=rGrid)[0]
-                zLens = np.float(iFile.split('/')[-2].split('_')[1])
                 print(densityProfile)
                 
                 iFeature = np.array( [(iHubbleParameter, zLens, densityProfile )], \
@@ -203,8 +240,7 @@ class hubbleInterpolator:
         #self.learnedGPforPCAcomponent = []
         self.predictor = []
 
-        kernel = ConstantKernel() + \
-          0.608**2*Matern(length_scale=1.484, nu=3/2) + \
+        kernel =  0.608**2*Matern(length_scale=0.484, nu=3/2) + \
           WhiteKernel(noise_level=1e3)
         
         #kernel = RationalQuadratic()
@@ -252,7 +288,13 @@ class hubbleInterpolator:
           CubicSpline( self.timeDelays, predictedTransform)
           
         predicted =   pdfInterpolator(timeDelays)
-        return predicted / np.max(predicted)
+
+        if np.any(predicted < -0.1):
+            print(inputFeatures, np.min(predicted))
+            #raise ValueError("Predicted probabilites negative")
+        
+        predicted[ predicted< 0] = 0
+        return predicted
 
     def plotPredictedPDF( self, inputFeatures):
         
@@ -269,7 +311,7 @@ class hubbleInterpolator:
                           label=str(iFeature))
 
         
-        plotPDF = self.pdfArray[ (self.reshapedFeatures[:,0] == 70) & (self.reshapedFeatures[:,1] == 0.74),:]
+        plotPDF = self.pdfArray[ (self.reshapedFeatures[:,0] == 0.7) & (self.reshapedFeatures[:,1] == 0.74),:]
         
         for iHubblePar in range(plotPDF.shape[0]):
 

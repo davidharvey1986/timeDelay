@@ -24,9 +24,10 @@ def selectionFunctionIndividualLenses( ):
   
             
             fileName = iFile.split('/')[-1]
+            zLens =  iFile.split('/')[-2]
             pklFileName = \
-              '../output/CDM/selectionFunction/SF_%s_%i_lsst.pkl' \
-              % (fileName, hubbleParameter )
+              '../output/CDM/selectionFunction/SF_%s_%s_%i_lsst.pkl' \
+              % (zLens,fileName,hubbleParameter )
             finalMergedPDFdict = \
               selectionFunction([iFile], \
                                 newHubbleParameter=hubbleParameter,\
@@ -45,7 +46,7 @@ def selectFunctionForAllLenses(useLsst=True):
 
     hubbleParameters = \
       np.array([50., 60., 70., 80., 90., 100.])
-    #hubbleParameter = 70.
+   
 
     for hubbleParameter in hubbleParameters:
         if useLsst:

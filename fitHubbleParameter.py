@@ -21,16 +21,26 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
 
     yTheory = hubbleInterpolator.predictPDF( xTrue, theta )
     
+    
+
     if np.any(np.isfinite(yTheory) == False):
         return -np.inf
 
     if np.any(yTheory < 0):
         return -np.inf
+    if (theta[0] < 0.5) | (theta[0] > 1.0):
+        return -np.inf
+    if (theta[1] < 0.) | (theta[1] > 1.0):
+        return -np.inf
+    if (theta[2] < -2.) | (theta[2] > -1.0):
+        return -np.inf
+    
+    cumsumYtheory = np.cumsum( yTheory )/np.sum(yTheory)
 
-    
-    prob = np.sum(norm.logpdf( yTheory[error!=0], \
+    prob = np.sum(norm.logpdf( cumsumYtheory[error!=0], \
                     yTrue[error!=0], error[error!=0]))
-    
+
+    prob = 1./np.max( np.abs(cumsumYtheory - yTrue))
     if np.isnan(prob):
         pdb.set_trace()
         return -np.inf
@@ -68,10 +78,13 @@ class fitHubbleParameterClass:
         #No zeros
             nwalkers = 20
 
-            ndim = 1
-            burn_len=20
-            chain_len=50
-            pos0 = np.random.rand(nwalkers,ndim)*2.+70.
+            ndim = 3
+            burn_len=500
+            chain_len=1000
+            pos0 = np.random.rand(nwalkers,ndim)
+            pos0[:,0] = pos0[:,0]*0.5+0.5
+            pos0[:,1] = pos0[:,1]*0.5
+            pos0[:,2] = pos0[:,2]*-1-1.
 
             args = (self.pdf['x'], self.pdf['y'], \
                     self.pdf['error'], self.hubbleInterpolator )
