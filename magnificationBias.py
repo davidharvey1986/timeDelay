@@ -6,6 +6,7 @@ from timeDelayDistributionClass import *
 
 def plotMagBiasedSISexample():
     jsonFile = '../output/SISexample/SIS_example_z0.2_400_4.SISexample.json'
+    jsonFile = '../output/SISexample/SIS_example_z0.2_250_5.0_4.0.json'
     cluster = timeDelayDistribution(jsonFile, zLens=0.2)
 
     plt.plot(cluster.finalPDF['finalLoS'][0].timeDelayPDF['x'],\
@@ -13,6 +14,7 @@ def plotMagBiasedSISexample():
                  
     plt.plot(cluster.finalPDF['finalLoS'][0].biasedTimeDelayPDF['x'],\
               cluster.finalPDF['finalLoS'][0].biasedTimeDelayPDF['y'], label='Biased')
+    plt.legend()
     plt.show()
     
 def plotMagBiasedPDF():
@@ -118,7 +120,7 @@ class luminosityFunction():
         
         limitingAbsoluteMag = limitingObsMag - \
           5.*np.log10(distancePc) + 5
-        print(redshift,limitingAbsoluteMag)
+
         self.magnitudes = np.linspace(-28, limitingAbsoluteMag, 10000)
         self.dMag = self.magnitudes[1] - self.magnitudes[0]
         self.redshift=redshift

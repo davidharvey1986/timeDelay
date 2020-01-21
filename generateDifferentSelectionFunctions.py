@@ -7,37 +7,50 @@ Can i predict what would happen if you got the wrong selection function?
 from convolveDistributionWithLineOfSight import *
 from scipy.stats import lognorm
 
-
-def main():
+import lsstSelectionFunction as lsstSelect
+def main(useLsst=True):
     
     
     dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
              
-    allFiles = glob.glob(dirD+'/CDM/z*/B*_cluster_*_*.json')
+    allFiles = glob.glob(dirD+'/CDM/z*/B*_cluster_0_*.json')
     
 
-    hubbleParameter = \
+    hubbleParameters = \
       np.array([50., 60., 70., 80., 90., 100.])
+    #hubbleParameter = 70.
 
-    zMed = np.linspace(1.5, 2.5, 11)
-    hubbleParameter = [70.]
-    for iHubble in hubbleParameter:
-        for izMed in zMed:
+    for hubbleParameter in hubbleParameters:
+        if useLsst:
+        
             pklFileName = \
-              '../output/CDM/selectionFunction/SF_%i_%0.2f.pkl' \
-              % (iHubble, izMed )
-      
+              '../output/CDM/selectionFunction/SF_%i_lsst.pkl' \
+              % (hubbleParameter )
             finalMergedPDFdict = \
               selectionFunction(allFiles, \
-                            newHubbleParameter=iHubble,\
-                            medianRedshift=izMed )
-
+                            newHubbleParameter=hubbleParameter,\
+                                useLsst = True)
+                                                                
             pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
+        else:
+            zMed = np.linspace(1.5, 2.5, 11)
+            for izMed in zMed:
+                pklFileName = \
+                '../output/CDM/selectionFunction/SF_%i_%0.2flsst.pkl' \
+                % (hubbleParameter, zMed )
+        
+                finalMergedPDFdict = \
+                  selectionFunction(allFiles, \
+                                    newHubbleParameter=hubbleParameter,\
+                                    medianRedshift=izMed,\
+                                    useLsst = False)
+                                
+                pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
 
     
 
 def selectionFunction( listOfJsonFiles, newHubbleParameter=None, \
-                           medianRedshift=1.0 ):
+                           medianRedshift=1.0, useLsst=True ):
     '''
     Combine the given list of Json Files into a single 
     histogram.
@@ -47,30 +60,50 @@ def selectionFunction( listOfJsonFiles, newHubbleParameter=None, \
     source and lens plane confihuration.
     
     Using the biased pdf
+
+    Use lsst doesnt requre a median redshift as i use the integrated lum func
+    (see lsstSelectionFunction.py)
     '''
 
 
     allFinalMergedPDF = None
-    matchToThisXaxis = np.linspace(-2,3,150)
+    matchToThisXaxis = np.linspace(-3,4,100)
+    zLenses = np.array([0.20, 0.25, 0.37, 0.50, 0.74, 1.0])
+
     for iJsonFile in listOfJsonFiles:
-         cluster = timeDelayDistribution( iJsonFile, newHubbleParameter=newHubbleParameter)
-         if matchToThisXaxis is None:
-            matchToThisXaxis = \
-              cluster.finalPDF['finalLoS'][0].biasedTimeDelayWithLineOfSightPDF['x']
+         cluster = \
+           timeDelayDistribution( iJsonFile, \
+                            newHubbleParameter=newHubbleParameter)
+        
          z0 = cluster.zLens
+         dzLens = zLenses[ np.arange(len(zLenses))[ z0 == zLenses]+1] - z0
+
          for iSourcePlane in cluster.finalPDF['finalLoS']:
-             print(iSourcePlane.data['z'])
-             selectionFunction = \
-               getSourceRedshiftWeight( iSourcePlane.data['z'], medianRedshift)
+
+             if useLsst:
+                 selectionFunction = \
+                   lsstSelect.getSelectionFunction(  iSourcePlane.data['z'])
+             else:
+                selectionFunction = \
+                  getSourceRedshiftWeight( iSourcePlane.data['z'], medianRedshift)
+
+             
              dZ = iSourcePlane.data['z'] - z0
+             
              iWeight = \
                np.repeat(iSourcePlane.data['weight'],\
                              len(matchToThisXaxis))*\
-                    selectionFunction*dZ
+                    selectionFunction*dZ*dzLens
              z0 = iSourcePlane.data['z']
+             
              #they dont all have the same x, so match to that
-             iMatchPdf = iSourcePlane.interpolateGivenPDF( matchToThisXaxis, iSourcePlane.biasedTimeDelayWithLineOfSightPDF )
-             iMatchLensOnlyPdf = iSourcePlane.interpolateGivenPDF( matchToThisXaxis, iSourcePlane.biasedTimeDelayPDF )
+             iMatchPdf = \
+               iSourcePlane.interpolateGivenPDF( matchToThisXaxis, \
+                            iSourcePlane.biasedTimeDelayWithLineOfSightPDF )
+                            
+             iMatchLensOnlyPdf = \
+               iSourcePlane.interpolateGivenPDF( matchToThisXaxis, \
+                            iSourcePlane.biasedTimeDelayPDF )
 
              
              if allFinalMergedPDF is None:
@@ -78,8 +111,10 @@ def selectionFunction( listOfJsonFiles, newHubbleParameter=None, \
                 allLensPlaneMergedPDF = iMatchLensOnlyPdf
                 weightTable = iWeight
              else:
-                allFinalMergedPDF = np.vstack( (allFinalMergedPDF, iMatchPdf) )
-                allLensPlaneMergedPDF = np.vstack((allLensPlaneMergedPDF, iMatchLensOnlyPdf))
+                allFinalMergedPDF = \
+                  np.vstack( (allFinalMergedPDF, iMatchPdf) )
+                allLensPlaneMergedPDF = \
+                  np.vstack((allLensPlaneMergedPDF, iMatchLensOnlyPdf))
                 weightTable = np.vstack(( weightTable , iWeight ))
                 
                 
@@ -87,8 +122,11 @@ def selectionFunction( listOfJsonFiles, newHubbleParameter=None, \
         print("No redshifts found for this list of redshifts")
         return None
 
-    finalMergedPDF = np.sum( weightTable*allFinalMergedPDF, axis=0)/np.sum(weightTable)
     nFluxRatios = np.nansum( allFinalMergedPDF/allFinalMergedPDF, axis=0)
+
+
+    
+    finalMergedPDF = np.sum( weightTable*allFinalMergedPDF, axis=0)/np.sum(weightTable)
     
     lensPlaneMergedPDF = np.sum( weightTable*allLensPlaneMergedPDF, axis=0)/np.sum(weightTable)
 

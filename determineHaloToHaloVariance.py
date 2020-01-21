@@ -8,12 +8,12 @@ def main():
     '''
 
 
-    gs = gridspec.GridSpec(10,1)
+    #gs = gridspec.GridSpec(10,1)
 
-    axisA = plt.subplot( gs[0:6,0])
-    axisB = plt.subplot( gs[7:,0])
-    axisC = axisB.twinx()
-    
+    #axisA = plt.subplot( gs[0:6,0])
+    #axisB = plt.subplot( gs[7:,0])
+    #axisC = axisB.twinx()
+    axisA = plt.gca()
     colors = ['r','b','g','c','orange','k','m','y','pink']
 
 
@@ -28,28 +28,28 @@ def main():
     
         finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
 
-        finalMergedPDFdict['y'] /= np.max(finalMergedPDFdict['y'])
-        finalMergedPDFdict['yError'] /= np.max(finalMergedPDFdict['y'])
-        finalMergedPDFdict['yLensPlane'] /= np.max(finalMergedPDFdict['yLensPlane'])
+        #finalMergedPDFdict['y'] /= np.max(finalMergedPDFdict['y'])
+        #finalMergedPDFdict['yError'] /= np.max(finalMergedPDFdict['y'])
+        #finalMergedPDFdict['yLensPlane'] /= np.max(finalMergedPDFdict['yLensPlane'])
 
-        noLogErrorBar = finalMergedPDFdict['yError'] >  finalMergedPDFdict['y']
-        finalMergedPDFdict['yError'][noLogErrorBar] = \
-          finalMergedPDFdict['y'][noLogErrorBar]*0.99
+        #noLogErrorBar = finalMergedPDFdict['yError'] >  finalMergedPDFdict['y']
+        #finalMergedPDFdict['yError'][noLogErrorBar] = \
+        #  finalMergedPDFdict['y'][noLogErrorBar]*0.99
           
         axisA.fill_between(finalMergedPDFdict['x'], \
                     finalMergedPDFdict['y'] - finalMergedPDFdict['yError']/2., \
                     finalMergedPDFdict['y'] + finalMergedPDFdict['yError']/2., \
                     color=colors[iColor], alpha=0.5)
-                    
+          
+        axisA.errorbar(finalMergedPDFdict['x'],finalMergedPDFdict['y'],\
+                    label=r"%s" % (iHalo), \
+                        color=colors[iColor])              
        
 
         #####FIT POWER LAW TO THE DISTRIBUTION##############
         powerLawFitClass = powerLawFit( finalMergedPDFdict, yMin=1e-2, curveFit=True )
 
-        
-        axisA.errorbar(finalMergedPDFdict['x'],finalMergedPDFdict['y'],\
-                    label=r"%s" % (iHalo), \
-                        color=colors[iColor])
+    
 
         beta.append(powerLawFitClass.params['params'][1])
         betaError.append( powerLawFitClass.params['error'][1])
@@ -57,28 +57,28 @@ def main():
                         
         #########  #########  #########  #########  #########
 
-        axisB.errorbar( iColor+0.9, powerLawFitClass.params['params'][1], \
-                            yerr=powerLawFitClass.params['error'][1], \
-                            fmt='o', color=colors[iColor])
+        #axisB.errorbar( iColor+0.9, powerLawFitClass.params['params'][1], \
+        #                    yerr=powerLawFitClass.params['error'][1], \
+        #                    fmt='o', color=colors[iColor])
 
-        axisC.errorbar( iColor+1.1,  \
-                       powerLawFitClass.getFittedPeakTimeAndError()[0],
-                            yerr= powerLawFitClass.getFittedPeakTimeAndError()[1], \
-                            fmt='*', color=colors[iColor])
+        #axisC.errorbar( iColor+1.1,  \
+        #               powerLawFitClass.getFittedPeakTimeAndError()[0],
+        #                    yerr= powerLawFitClass.getFittedPeakTimeAndError()[1], \
+        #                    fmt='*', color=colors[iColor])
 
-    axisB.set_xticks([1, 2, 3, 4])
-    axisC.set_ylabel(r'log$(\Delta t_{\rm peak}$ / days )')
+    #axisB.set_xticks([1, 2, 3, 4])
+    #axisC.set_ylabel(r'log$(\Delta t_{\rm peak}$ / days )')
 
-    axisB.set_xticklabels(haloNames)
+    #axisB.set_xticklabels(haloNames)
     axisA.legend()
-    axisA.set_yscale('log')
+    #axisA.set_yscale('log')
  
     axisA.set_xlabel(r'log($\Delta T$/ days)', labelpad=-1)
     axisA.set_ylabel(r'P(log($\Delta T$/ days))')
-    axisA.set_xlim(-2.,3.)
-    axisB.set_xlabel('Halo Name')
-    axisB.set_ylabel(r'$\beta$')
-    axisA.set_ylim(1e-2,2.)
+    axisA.set_xlim(-1.,2.)
+    #axisB.set_xlabel('Halo Name')
+    #axisB.set_ylabel(r'$\beta$')
+    #axisA.set_ylim(1e-2,2.)
     
 
     plt.savefig('../plots/haloToHaloVariance.pdf')

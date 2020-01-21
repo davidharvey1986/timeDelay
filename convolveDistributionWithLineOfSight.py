@@ -23,7 +23,7 @@ def saveMassSheetsAsPickles():
 
     '''
     dataDir = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/CDM/massSheetTest/z_0.37/'
-    allJsonFiles = glob.glob(dataDir+'/*100*.json')
+    allJsonFiles = glob.glob(dataDir+'/*.json')
     for iJson in allJsonFiles:
 
         pklFileName = iJson+'.pkl'
@@ -98,7 +98,7 @@ def saveIndividualHalos(rerun=False):
         if os.path.isfile(pklFileName)  & (not rerun) :
             continue
         else:
-            finalMergedPDFdict = combineJsonFiles(individualHaloFiles, newHubbleParameter=70.)
+            finalMergedPDFdict = combineJsonFiles(individualHaloFiles, newHubbleParameter=100.)
 
             pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
 
@@ -132,6 +132,7 @@ def saveAllLensesForMultipleHubbleParameters(rerun=False):
 
 
     hubbleParameters = [100., 50., 60., 70., 80., 90.]
+
     for iHubbleParameter in hubbleParameters:
         pklFileName = '../output/CDM/combinedPDF_'+str(iHubbleParameter)+'.pkl'
         if os.path.isfile(pklFileName)  & (not rerun):
@@ -166,7 +167,6 @@ def saveAllRedshifts( rerun=False, integrate=False):
     '''
     If integrate then all lenses up to and including that redshift
     '''
-
 
     dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
     allRedshifts = [ i.split('/')[-1] for i in glob.glob(dirD+'/CDM/z*')]
@@ -215,7 +215,8 @@ def combineJsonFiles( listOfJsonFiles, newHubbleParameter=100.0, zLens=None):
 
     timeDelayBins = None #np.linspace(-2,3,100)
     allFinalMergedPDF = None
-    matchToThisXaxis = np.linspace(-3,4,100)
+    matchToThisXaxis = np.linspace(-3,4,200)
+    zLenses = np.array([0.20, 0.25, 0.37, 0.50, 0.74, 1.0])
     
     for iJsonFile in listOfJsonFiles:
          cluster = \
@@ -223,12 +224,19 @@ def combineJsonFiles( listOfJsonFiles, newHubbleParameter=100.0, zLens=None):
                 newHubbleParameter=newHubbleParameter, \
                 timeDelayBins=timeDelayBins,zLens=zLens)
 
+         z0 = cluster.zLens
+
+         dzLens = zLenses[ np.arange(len(zLenses))[ z0 == zLenses]+1] - z0
+
+
          
          for iSourcePlane in cluster.finalPDF['finalLoS']:
+
+             dZsource = iSourcePlane.data['z'] - z0
              
              #This weight is due to the volume at a given redshift,
-             iWeight = np.repeat(iSourcePlane.data['weight'],len(matchToThisXaxis))
-
+             iWeight = np.repeat(iSourcePlane.data['weight'],len(matchToThisXaxis))*dZsource*dzLens[0]
+             z0 =  iSourcePlane.data['z']
              #they dont all have the same x, so match to that
              iMatchPdf = \
                iSourcePlane.interpolateGivenPDF( matchToThisXaxis, \
@@ -244,6 +252,7 @@ def combineJsonFiles( listOfJsonFiles, newHubbleParameter=100.0, zLens=None):
              iMatchBiasOnlyPdf = \
                iSourcePlane.interpolateGivenPDF( matchToThisXaxis, \
                                     iSourcePlane.biasedTimeDelayPDF )
+
              if allFinalMergedPDF is None:
                 allFinalMergedPDF = iMatchPdf
                 allFinalMergedBiasedPDF = iMatchBiasedPdf
@@ -348,9 +357,9 @@ if __name__ == "__main__":
     #saveMassSheetsAsPickles()
     #combineMassBins( )
     #forcedRedshiftHalos( rerun=True)
-    saveAllRedshifts( rerun=True)
-    saveAllRedshifts( rerun=True, integrate=False)
-    #saveIndividualHalosAndRedshifts( rerun=True)
-    #saveIndividualHalos( rerun=True)
-    saveAllLensesForMultipleHubbleParameters( rerun=True)
+    #saveAllRedshifts( rerun=True)
+    #saveAllRedshifts( rerun=True, integrate=False)
+    ##saveIndividualHalosAndRedshifts( rerun=True)
+    saveIndividualHalos( rerun=True)
+    #saveAllLensesForMultipleHubbleParameters( rerun=True)
 

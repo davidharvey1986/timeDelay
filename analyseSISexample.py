@@ -67,6 +67,7 @@ def main():
 
     ax2.set_xlim(0.25,1.85)
     ax2.plot([0., 2.2], [0.,0.], '--')
+    ax2.set_xlabel(r'log($\Delta t$/ days)', labelpad=-1)
 
     
     plt.savefig('../plots/analyseSIS.pdf')

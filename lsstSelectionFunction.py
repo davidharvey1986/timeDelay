@@ -4,38 +4,37 @@ i want the redshift distributions
 
 '''
 
-from magnificationBias import *
 from generateDifferentSelectionFunctions import *
 
 def main():
 
-    redshifts = np.linspace(0.1, 5., 100)
-    nQuasars = []
-    Volume = []
+    redshifts = np.linspace(0.1, 10., 100)
+    total = []
     for iRedshift in redshifts:
-        luminosityFunctionClass = \
-          luminosityFunction( iRedshift )
-        comovingVolume = \
-          distance.diff_comoving_volume( iRedshift, \
-                        **luminosityFunctionClass.cosmo)
-       
-        nQuasars.append(np.sum(luminosityFunctionClass.luminosityFunction['y'])*np.abs(luminosityFunctionClass.dMag))
-        Volume.append(comovingVolume)
 
+        ana = getSourceRedshiftWeight( iRedshift, zMed=2.)
+        #plt.plot(iRedshift, ana/np.max(ana), ':')
+        total.append(getSelectionFunction( iRedshift))
 
-    
-    Volume = np.array(Volume)
-    nQuasars = np.array(nQuasars)
-
-    plt.plot(redshifts, nQuasars/np.max(nQuasars))
-    plt.plot(redshifts, Volume/np.max(Volume))
-    total = (Volume*nQuasars)
-    plt.plot(redshifts, total/np.max(total))
+    plt.plot(redshifts, total)
     
 
     
     plt.show()
+    
+def getSelectionFunction( iRedshift):
 
+    luminosityFunctionClass = \
+          luminosityFunction( iRedshift )
+
+    nQuasars = \
+      np.sum(luminosityFunctionClass.luminosityFunction['y'])*\
+      np.abs(luminosityFunctionClass.dMag)
+    comovingVolume = \
+          distance.diff_comoving_volume( iRedshift, \
+                        **luminosityFunctionClass.cosmo)
+       
+    return nQuasars*comovingVolume/1e9
 
 if __name__ == '__main__':
     main()

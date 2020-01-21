@@ -15,6 +15,7 @@ import glob
 import sys
 import ipdb as pdb
 from getHaloMass import *
+from determineNumericalArtifacts import *
 
 class timeDelayDistribution:
     '''
@@ -40,6 +41,9 @@ class timeDelayDistribution:
         self.inputJsonFileName  = inputJsonFileName
         self.cleanTimeDelays = inputJsonFileName+'.clean.pkl'
         
+        if not os.path.isfile(self.cleanTimeDelays):
+            cleanMultipleImages(inputJsonFileName)
+
         self.outputPklFile = outputPklFile
         if zLens is None:
             self.getLensRedshift()
@@ -199,9 +203,8 @@ class singleSourcePlaneDistribution:
             self.timeDelayData['minimumMagnification'][minMagRatioIndexes]
         
         #self.getMagnificationBias()
-        self.magBias = \
-            self.timeDelayData['biasedTimeDelay'][minMagRatioIndexes]/\
-            self.timeDelayData['timeDelay'][minMagRatioIndexes]
+        self.magBias = self.timeDelayData['biasedTimeDelay'][minMagRatioIndexes]
+       
 
         if self.timeDelayBins is None:
             timeDelayRange =  \
@@ -226,9 +229,11 @@ class singleSourcePlaneDistribution:
         #I need to weight the timedelays
         centralisationWeight = \
             1./self.timeDelayData['minCentralDistance'][minMagRatioIndexes]**2
+            
         y, x = np.histogram( self.logDoubleTimeDelay, \
                           bins=self.timeDelayBins, density=True, \
                           weights=centralisationWeight)
+                          
         xc = (x[1:] + x[:-1])/2.
         dX = x[1:] - x[:-1]
 

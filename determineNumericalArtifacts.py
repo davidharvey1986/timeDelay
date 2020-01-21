@@ -182,7 +182,8 @@ def cleanMultipleImages(jsonFile, zSource=5.):
         imageSeparation = \
             np.sqrt((xNoZeros[:,-2] - xNoZeros[:,-1])**2+\
                     (yNoZeros[:,-2] - yNoZeros[:,-1])**2)
-       
+
+            
         data = {"timeDelay":newTimeDelays, "minCentralDistance":minCentralDistance, \
             "imageSeparation":imageSeparation, "magnificationRatio":magnificationRatio, \
             "minimumMagnification":minimumMagnification, \
@@ -271,4 +272,4 @@ def sisExample():
 
     
 if __name__ == '__main__':
-    sisExample()
+    cleanAllFiles()

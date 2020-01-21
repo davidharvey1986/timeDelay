@@ -32,10 +32,11 @@ def main():
         else:
             raise ValueError("No pickle file found (%s) "%pklFileName)
 
-        finalMergedPDFdict['y'] /= np.max(finalMergedPDFdict['y'])
-        finalMergedPDFdict['yError'] /= np.max(finalMergedPDFdict['y'])
+        #finalMergedPDFdict['y'] /= np.max(finalMergedPDFdict['y'])
+        #finalMergedPDFdict['yError'] /= np.max(finalMergedPDFdict['y'])
 
-        plotPDF( finalMergedPDFdict, colors[iColor], r"H0=%i kms/Mpc" % iMassSheet, axisA, yType='y' )
+        plotPDF( finalMergedPDFdict, colors[iColor], \
+            r"H0=%i kms/Mpc" % iMassSheet, axisA, yType='y', nofill=True )
 
         #####FIT POWER LAW TO THE DISTRIBUTION##############
         powerLawFitClass = powerLawFit( finalMergedPDFdict )
@@ -77,11 +78,11 @@ def main():
 
     
     axisA.legend()
-    axisA.set_yscale('log')
+    #axisA.set_yscale('log')
     axisA.set_xlabel(r'log($\Delta t$/ days)', labelpad=-1)
     axisA.set_ylabel(r'P(log($\Delta t$/ days))')
     axisA.set_xlim(-1.4,3.5)
-    axisA.set_ylim(1e-2,1.2)
+    #axisA.set_ylim(1e-2,1.2)
     plt.savefig('../plots/massSheetDegeneracyTest.pdf')
     plt.show()
     

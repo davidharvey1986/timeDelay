@@ -12,7 +12,7 @@ import ipdb as pdb
 import os
 import pickle as pkl
 from matplotlib import gridspec
-import determineHaloToHaloVariance as h2h
+#import determineHaloToHaloVariance as h2h
 from lensing import *
 import matplotlib as mpl
 mpl.rcParams['ytick.direction'] = 'in'
@@ -90,13 +90,13 @@ def plotMassBins():
     
     axisA.set_ylabel(r'P(log[$\Delta t$]) / P(log[$\Delta t_{\rm peak}$])')
 
-    axisA.set_xlim(-2.,3.)
+    axisA.set_xlim(-1.,2.75)
     axisA.set_ylim(1e-2,2.)
     axisB.set_xlabel(r'log$(M_{\rm lens}/M_\odot$)')
     axisB.set_ylabel(r'$\beta$')
     plt.savefig('../plots/massBins.pdf')
     plt.show()
-    
+
 
 
 
@@ -278,13 +278,19 @@ def allLensesDifferentHubbleValues():
             finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
         else:
             raise ValueError("No pickle file found (%s) "%pklFileName)
-        
+
+        for i in finalMergedPDFdict.keys():
+            if 'y' in i:
+                finalMergedPDFdict[i] /= np.sum( finalMergedPDFdict[i])*(finalMergedPDFdict['x'][1]- finalMergedPDFdict['x'][0])
+
      
         plotPDF( finalMergedPDFdict, colors[iColor], \
-            r"H0=%i kms/Mpc" % iHubbleParameter, axisA, yType='yBiased', nofill=False )
+            r"H0=%i kms/Mpc" % iHubbleParameter, axisA, \
+                    yType='y', nofill=False )
 
         #####FIT POWER LAW TO THE DISTRIBUTION##############
-        powerLawFitClass = powerLawFit( finalMergedPDFdict, inputYvalue='yBiased'  )
+        powerLawFitClass = \
+          powerLawFit( finalMergedPDFdict, inputYvalue='y', yMin=1e-2  )
         
         allBeta.append(powerLawFitClass.params['params'][1])
         allBetaError.append(powerLawFitClass.params['error'][1])
@@ -327,9 +333,9 @@ def allLensesDifferentHubbleValues():
     #axisA.set_yscale('log')
     axisA.set_xlabel(r'log($\Delta t$/ days)', labelpad=-1)
     
-    axisA.set_ylabel(r'P(log[$\Delta t$]) / P(log[$\Delta t_{\rm peak}$])')
+    axisA.set_ylabel(r'P(log[$\Delta t$])')
 
-    axisA.set_xlim(-2.,3.)
+    axisA.set_xlim(-1,2.75)
     #axisA.set_ylim(1e-2,2.)
     plt.savefig('../plots/allLensesDifferentHubbleValues.pdf')
     plt.show()
@@ -342,7 +348,7 @@ def allLensesDifferentHubbleValues():
                             (hubbleParameters[i], allBeta[i],allBetaError[i],peakTimeDelay[i],peakTimeDelayError[i]))
     tableOfParameters.write("\hline \end{tabular} \n \caption{\label{tab:data}} \n \end{table}")
     tableOfParameters.close()
-
+   
     
 def plotPDF( PDF, color, label, axisA, yType='yBiasedLens', nofill=False ):
 

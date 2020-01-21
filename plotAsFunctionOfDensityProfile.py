@@ -32,11 +32,12 @@ def main( ):
     powerLawError = []
     nHalos = []
     RMS = []
+    zLens = []
     for iHalo in allFiles:
-        pdf = combineJsonFiles([iHalo], newHubbleParameter=100.)
+        pdf = combineJsonFiles([iHalo], newHubbleParameter=70.)
  
  
- 
+        zLens.append( np.float(iHalo.split('/')[3].split('_')[1]))
         nHalosInField =substructure( iHalo ) 
         nHalos.append(nHalosInField)
      
@@ -47,9 +48,11 @@ def main( ):
 
         #####FIT POWER LAW TO THE DISTRIBUTION##############
         
-        powerLawFitClass = powerLawFit( pdf, yMin=1.5e-2, curveFit=True, inputYvalue='y' )
+        powerLawFitClass = powerLawFit( pdf, yMin=1.e-2, \
+                        curveFit=True, inputYvalue='y' )
         
         beta.append(powerLawFitClass.params['params'][1])
+
         betaError.append( powerLawFitClass.params['error'][1])
         RMS.append( np.sqrt(np.sum((powerLawFitClass.getPredictedProbabilities()-powerLawFitClass.yNoZeros)**2)))
         #dX = pdf['x'][1] - pdf['x'][0]
@@ -62,13 +65,13 @@ def main( ):
         tPeakError.append(  powerLawFitClass.params['error'][0])
         #################
         
-        #if  (densityProfileIndex > 10.9) & (powerLawFitClass.params['params'][0] < -2):
+        #if   (powerLawFitClass.params['params'][1] > 5):
             
-        #plt.plot(pdf['x'], pdf['y'])
-        #plt.plot(pdf['x'], powerLawFitClass.getPredictedProbabilities(), ls='-')
-
-        #plt.yscale('log')
-        #plt.show()
+        #    plt.plot(pdf['x'], pdf['y'])
+        #    plt.plot(pdf['x'], powerLawFitClass.getPredictedProbabilities(pdf['x']), ls='-')
+        
+        #    plt.yscale('log')
+        #    plt.show()
         
     powerLaw = np.array(powerLaw)
     beta  = np.array(beta)
@@ -82,36 +85,39 @@ def main( ):
     cNorm  = colors.Normalize(vmin=2.8, vmax=3.)
     scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=jet)
     lineStyles = ['--',':','-.']
-    alpha = 0.2
+    alpha = 1.
     #####
 
     ax = plt.gca()
     nHalos = np.array(nHalos)
+
     
-    ax.errorbar(powerLaw[nHalos == 1], beta[nHalos == 1], \
-            xerr=powerLawError[nHalos == 1], yerr=betaError[nHalos == 1], fmt='o', \
-                          color='blue', alpha=alpha, label='No Substructure')
+
+
+    zLens = np.array(zLens)
+    color = ['blue','red','green','cyan','yellow']
+    for i, iz in enumerate(np.unique(zLens)):
+
+        ax.errorbar(powerLaw[(nHalos == 1) & (zLens==iz)], \
+            beta[(nHalos == 1) & (zLens==iz)], \
+            xerr=powerLawError[(nHalos == 1) & (zLens==iz)],\
+            yerr=betaError[(nHalos == 1) & (zLens==iz)], \
+            fmt='o', color=color[i], alpha=alpha, label='z='+str(iz))
                           
-    ax.errorbar(powerLaw[nHalos > 1], beta[nHalos > 1],\
-            xerr=powerLawError[nHalos > 1], yerr=betaError[nHalos > 1], \
-            fmt='o', alpha=alpha, color='red', label='Substrucutre')
-            
+        ax.errorbar(powerLaw[(nHalos > 1)  & (zLens==iz)], \
+            beta[(nHalos > 1)  & (zLens==iz)],\
+            xerr=powerLawError[(nHalos > 1)  & (zLens==iz)], \
+            yerr=betaError[(nHalos > 1)  & (zLens==iz)], \
+            fmt='^', alpha=alpha, color=color[i])
+
     
-    #axarr[1].errorbar(powerLaw[nHalos == 1], tPeak[nHalos == 1], \
-    #        xerr=powerLawError[nHalos == 1], yerr=tPeakError[nHalos == 1], fmt='o', color='red')
-
-
-    #axarr[1].errorbar(powerLaw[nHalos > 1], tPeak[nHalos > 1], \
-    #        xerr=powerLawError[nHalos > 1], yerr=tPeakError[nHalos > 1], fmt='o')
-            
+    ax.errorbar(0,0,0,0,fmt='o',label='No Substructure', color='black')
+    ax.errorbar(0,0,0,0,fmt='^',label='Substructure', color='black')
     ax.legend()
-    
-    #axarr[0].scatter(powerLaw, beta, c=RMS)
-    #axarr[1].scatter(powerLaw, tPeak, c=RMS)
 
     getAndPlotTrend(powerLaw[nHalos == 1], beta[nHalos == 1], ax, '-', color='blue')
     getAndPlotTrend(powerLaw[nHalos > 1], beta[nHalos > 1], ax, '-', color='red')
-
+    ax.set_xlim(-2.1,-1.6)
     #popt, pcov = curve_fit(func, powerLaw[nHalos == 1], beta[nHalos == 1])
     #ax.plot( powerLaw, func( powerLaw, *popt), color='blue')
     #popt, pcov = curve_fit(func, powerLaw[nHalos > 1], beta[nHalos > 1])
@@ -119,7 +125,7 @@ def main( ):
     
     #popt, pcov = curve_fit(func, powerLaw, tPeak)
     #axarr[1].plot( powerLaw, func( powerLaw, *popt))
-    ax.set_xlabel('Projected Density Profile Power Law Index')
+    ax.set_xlabel('Density Profile Power Law Index')
     ax.set_ylabel('PDF Power Law Index')
     plt.savefig('../plots/densityProfile.pdf')
     plt.show()
@@ -137,7 +143,8 @@ def getDensityProfileIndex( jsonFileName, rGrid=None, nRadialBins=10):
     #plt.plot(radial, density)
     #plt.plot(radial, func( radial, *popt))
     #plt.show()
-    return index, error[1]
+    Correction = 0.96761529 #from my deprojection code
+    return index-Correction, error[1]
 
 def func(x, a, b):
     return a  + x*b
@@ -210,7 +217,7 @@ def getAndPlotTrend( x, y, axis, fmt, color='grey', pltX=None, sigma=None):
         pError *= 0.9
         
     if pltX is None:
-        pltX = np.linspace(-1.1,-0.6)
+        pltX = np.linspace(-2.1,-1.6)
     axis.plot(  pltX, func(  pltX, *trendParams), fmt, color=color)
 
     axis.fill_between( pltX, func( pltX, *pUpper), \
