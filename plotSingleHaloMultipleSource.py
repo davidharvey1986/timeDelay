@@ -2,35 +2,33 @@
 from convolveDistributionWithLineOfSight import *
 
 def main():
-    jsonFile ='../output/CDM/z_0.20/B005_cluster_0_2_total_sph.fits.py.raw.json'
+
+    dataDir = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/CDM/z_0.25'
+    jsonFile = dataDir+'/B002_cluster_0_2_total_sph.fits.py.raw.json'
 
 
-    jsonData = json.load(open(jsonFile, 'rb'))
+    hubbleParameters = [100., 50., 60., 70., 80., 90.]
+    ax = plt.gca()
+    for iHubbleParameter in hubbleParameters:
 
-    singleSource = jsonData[-1]
-    xPosition = np.array([])
-    yPosition = np.array([])
-    zPosition = np.array([])
-    print(singleSource.keys())
-    for iImageFamily in range(len(singleSource['positionX'])):
-            
-            
-
-            noZeros=np.array(singleSource['doubles'][iImageFamily])!=0 
-            imagesInd =  np.argsort(np.abs(singleSource['doubles'][iImageFamily])[noZeros])[0:2]
+        cluster = timeDelayDistribution( jsonFile, \
+                    newHubbleParameter=iHubbleParameter, \
+                    timeDelayBins=np.linspace(1,2,50), \
+                    outputPklFile='../output/CDM/singleSourcePlane/singleSourcePlane_%i.pkl' % iHubbleParameter)
+        sourcePlane = cluster.finalPDF['finalLoS'][-1]
 
 
+        plt.plot(sourcePlane.timeDelayPDF['x'], sourcePlane.timeDelayPDF['y'], label=r'$H_0$=%i kms$^{-1}Mpc$^{-1}$' % iHubbleParameter)
+    
 
-            xPosition = \
-              np.append(xPosition, np.array(singleSource['positionX'][iImageFamily])[noZeros][imagesInd] )
-            yPosition = \
-              np.append(yPosition, np.array(singleSource['positionY'][iImageFamily])[noZeros][imagesInd] )
-            zPosition =\
-              np.append(zPosition, np.abs(1./np.array(singleSource['doubles'][iImageFamily])[noZeros][imagesInd]))
-
-
-    plt.scatter( xPosition, yPosition, c=np.log10(zPosition))
+    ax.set_xlabel(r'log($\Delta t$/ days)')
+    ax.set_ylabel(r'P(log[$\Delta t$])')
+    ax.set_ylim(0., 8.)
+    ax.set_xlim(0.85, 2.3)
+    
+    ax.legend()
     plt.show()
+
     
 
 

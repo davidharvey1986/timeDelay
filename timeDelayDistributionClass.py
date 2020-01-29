@@ -143,13 +143,14 @@ class singleSourcePlaneDistribution:
         self.convolveTimeDelayDistributionWithLineOfSight()
 
         if newHubbleParameter is not None:
-            self.timeDelayWithLineOfSightPDF['x'] *= self.rescaleToNewHubbleParameter(newHubbleParameter)
-            self.timeDelayPDF['x'] *= self.rescaleToNewHubbleParameter(newHubbleParameter)
+            self.timeDelayWithLineOfSightPDF['x'] += self.rescaleToNewHubbleParameter(newHubbleParameter)
+            self.timeDelayPDF['x'] += self.rescaleToNewHubbleParameter(newHubbleParameter)
 
     def rescaleToNewHubbleParameter( self, newHubbleParameter):
          timeDelayDistanceHubbleX =   self.getTimeDelayDistance( newHubbleParameter )
-         timeDelayDistanceHubble100 = self.getTimeDelayDistance( 70. )
-         return timeDelayDistanceHubbleX/timeDelayDistanceHubble100
+         timeDelayDistanceHubble100 = self.getTimeDelayDistance( 100. )
+         
+         return np.log10(timeDelayDistanceHubbleX/timeDelayDistanceHubble100)
 
 
     def getMagnificationBias( self ):

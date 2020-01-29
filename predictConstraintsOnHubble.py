@@ -7,38 +7,98 @@ I will fit a double powerLaw
 '''
 import plotAsFunctionOfDensityProfile as getDensity
 from powerLawFit import *
-from interpolateSourcePlane import *
 import fitHubbleParameter as fitHubble
 from scipy.interpolate import CubicSpline
 from scipy.stats import kurtosis
 import corner as corner
+from hubbleInterpolatorClass import *
+from scipy.stats import norm
+import matplotlib.lines as mlines
+from matplotlib import rcParams
+rcParams["font.size"] = 16
+from scipy.ndimage import gaussian_filter as gauss
 
-def nonPerfectFittingFunction(nComponents=4):
+def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000 ):
+
+    labels = \
+      [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$']
+    ndim = 3
+    figcorner, axarr = plt.subplots(ndim,ndim,figsize=(12,12))
+    color = ['blue','red','green','cyan']
+    
+    for icolor, sampleSize in enumerate([100., 1000, 10000]):
+        samples = getMCMCchainForSamplesSize(sampleSize, 10, 70., None, trueHubble=False)
+
+        nsamples = samples.shape[0]                     
+        corner.corner(samples, \
+                      bins=75, smooth=True, \
+                      plot_datapoints=False,
+                      fig=figcorner, \
+                      labels=labels, plot_density=True, \
+                      truths=[0.7, 0.3, -1.9],\
+                      weights=np.ones(nsamples)/nsamples,\
+                    color=color[icolor],\
+                          levels=(0.68,), labelsize=15)
+
+    axarr[0,0].set_xlim( 0.6, 0.8)
+    axarr[1,1].set_xlim( 0.26, 0.4)
+    axarr[2,2].set_xlim( -2., -1.75)
+
+    
+    
+    axarr[1,0].set_xlim( 0.6, 0.8)
+    axarr[1,0].set_ylim( 0.24, 0.5)
+
+    
+    axarr[2,0].set_xlim( 0.6, 0.8)
+    axarr[2,0].set_ylim( -2, -1.75)
+
+    axarr[2,1].set_xlim( 0.24, 0.5)
+    axarr[2,1].set_ylim( -2, -1.75)
+
+    hundreds = mlines.Line2D([], [], color='blue', label=r'$10^2$ Lenses')
+    thousand = mlines.Line2D([], [], color='red', label='$10^3$ Lenses')
+    tenthous = mlines.Line2D([], [], color='green', label='$10^4$ Lenses')
+    
+    axarr[0,1].legend(handles=[hundreds,thousand,tenthous], \
+        bbox_to_anchor=(0., 0.25, 1.0, .0), loc=4)
+    plt.savefig('../plots/degenercies.pdf')
+    plt.show()
+    
+def nonPerfectFittingFunction(nComponents=5):
+
     inputHubbleParameter = 70.
-    pklFile = 'multiParameterFit.pkl'
-    if os.path.isfile(pklFile):
-        sampleSizes, estimates = pkl.load(open(pklFile, 'rb'))
-    else:
-        sampleSizes, estimates = \
-          getPredictedConstraints(inputHubbleParameter)
-        pkl.dump([sampleSizes, estimates], open(pklFile, 'wb'))
+    
+    
+    sampleSizes, estimates = \
+      getPredictedConstraints(inputHubbleParameter, trueHubble=True)
       
-    plt.plot( sampleSizes[:-1], np.std(estimates, axis=1)[:-1]/inputHubbleParameter*100.)
-    pdb.set_trace()
-    plt.yscale('log')
+    plt.plot( sampleSizes, estimates/inputHubbleParameter*100., \
+                  label='Ensemble Lenses')
+    sampleSizes, estimates = \
+      getPredictedConstraints(inputHubbleParameter, exactIndex=False,\
+                                  trueHubble=False)
+      
+    plt.plot( sampleSizes, estimates/inputHubbleParameter*100., \
+                label='Exact PDF')
+    
+    #plt.yscale('log')
     plt.xscale('log')
-
+    plt.legend()
 
     plt.xlabel('nSamples')
-    plt.ylabel(r'$\sigma_{H_0}/H_0$')
+    plt.ylabel(r'Percentage error on $H_0$)')
     plt.show()
     
 def perfectFittingFunction(nComponents=5):
-
+    '''
+    This is done via a cubic spline interpolator between
+    each pdf
+    '''
 
     inputHubbleParameter = 70.
 
-    pklFile = 'perfectFittingFunction.pkl'
+    pklFile = 'pickles/perfectFittingFunction.pkl'
 
     sampleSizes, estimates = pkl.load(open(pklFile,'rb'))
     
@@ -51,78 +111,134 @@ def perfectFittingFunction(nComponents=5):
 
 
     plt.xlabel('nSamples')
-    plt.ylabel(r'$\sigma_{H_0}/H_0$')
+    plt.ylabel(r'Percentage error on $H_0$)')
     plt.show()
 
 def getPredictedConstraints(inputHubbleParameter, \
-                                nIterations = 10,\
-                                nSampleSizes = 11):
-                                
+                                nIterations = 60,\
+                                nSampleSizes = 21,\
+                                exactIndex=False,\
+                                trueHubble=False):
+
+
+    #Set up the hubble interpolator class to train and predict
+    #the PDF
     hubbleInterpolaterClass = hubbleInterpolator()
     hubbleInterpolaterClass.getTrainingData()
     hubbleInterpolaterClass.extractPrincipalComponents()
     hubbleInterpolaterClass.learnPrincipalComponents()
 
-    predictFeatures = hubbleInterpolaterClass.reshapedFeatures
+    #predictFeatures = hubbleInterpolaterClass.reshapedFeatures
     #print(predictFeatures[:,0])
-    #predictFeatures = predictFeatures[ (predictFeatures[:,0] == 0.7) & (predictFeatures[:,1] == 0.74), :]
+    #predictFeatures = predictFeatures[ (predictFeatures[:,0] == 0.7) & (prepdbictFeatures[:,1] == 0.74), :]
 
     #predictFeatures[:,2] = np.linspace(-1.,-2.,predictFeatures.shape[0])
     #hubbleInterpolaterClass.plotPredictedPDF( predictFeatures )
 
     sampleSizes = 10**np.linspace(2,4,nSampleSizes)
-    color=['blue','red','green']
-
     
-    estimates = np.zeros((nSampleSizes, nIterations))
+    estimates = np.zeros(nSampleSizes)
     
+    #Loop through each sample size
     for i, iSampleSize in enumerate(sampleSizes):
-        samples = None
-        for iIteration in range(nIterations):
-            print("Sample Size: %i/%i, iteration: %i/%i" %\
-                      (i+1, nSampleSizes, iIteration+1, nIterations))
-            selectedTimeDelays = \
-              selectionFunctionZmed( iSampleSize, inputHubbleParameter, hubbleInterpolaterClass)
-      
-            fitHubbleClass = \
-              fitHubble.fitHubbleParameterClass( selectedTimeDelays, \
-                                    hubbleInterpolaterClass)
+        print("Sample Size: %i" % (iSampleSize))
 
-            if samples is None:
-                samples = fitHubbleClass.samples
-            else:
-                samples = np.vstack( (samples, fitHubbleClass.samples))
-                
-            estimates[i,iIteration] = \
-              fitHubbleClass.params['params'][0]
-        pkl.dump(samples, open('pickles/multiFitSamples_%i.pkl' % iSampleSize))
-        
+        samples = \
+          getMCMCchainForSamplesSize(iSampleSize, nIterations, \
+                        inputHubbleParameter, hubbleInterpolaterClass,\
+                                         trueHubble=trueHubble)
+
+        if exactIndex:
+            truth = \
+              (samples[:,1] > 0.19) & (samples[:,1] < 0.21) &\
+              (samples[:,2] > -1.95) & (samples[:,2] < -1.5)
+            #estimates[i] = \
+            #  norm.fit(samples[truth,0])[1]/np.sqrt(nIterations)*100
+
+            median, upper, lower = \
+              getModeAndError( samples[truth, 0])
+
+        else:
+            #estimates[i] = \
+            #  norm.fit(samples[:,0])[1]/np.sqrt(nIterations)*100
+            
+            median, upper, lower = \
+              getModeAndError( samples[:,0])
+
+        estimates[i] = upper
+
+
     return sampleSizes, estimates
 
 
-def selectionFunctionZmed( nSamples, hubbleParameter, hubbleInterpolaterClass ):
+    
+def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
+                    inputHubbleParameter, hubbleInterpolaterClass,\
+                                    trueHubble=False):
+    samples = None
+
+    if trueHubble:
+        pklFile = 'picklesTrueHubble/multiFitSamples_%i.pkl' % iSampleSize
+    else:
+        pklFile = 'exactPDFpickles/multiFitSamples_%i.pkl' % iSampleSize
+        
+    if os.path.isfile(pklFile):
+        return pkl.load(open(pklFile, 'rb'))
+    
+    for iIteration in range(nIterations):
+        print("Iteration: %i/%i" % (iIteration+1, nIterations))
+        selectedTimeDelays = \
+              selectRandomSampleOfTimeDelays( iSampleSize, \
+                inputHubbleParameter, hubbleInterpolaterClass,\
+                    trueHubble=trueHubble)
+      
+        fitHubbleClass = \
+              fitHubble.fitHubbleParameterClass( selectedTimeDelays, \
+                                    hubbleInterpolaterClass)
+
+        if samples is None:
+            samples = fitHubbleClass.samples
+        else:
+            samples = np.vstack( (samples, fitHubbleClass.samples))
+  
+
+    pkl.dump(samples, open(pklFile, 'wb'))
+        
+    return samples
+
+
+def selectRandomSampleOfTimeDelays( nSamples, hubbleParameter, \
+                        hubbleInterpolaterClass, trueHubble=False ):
     '''
     From a given pdf randomly select some time delays
+
     '''
 
     pklFileName = \
       '../output/CDM/selectionFunction/SF_%i_lsst.pkl' \
       % (hubbleParameter)
 
-
+      
     finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
 
-
-
-    #interpolatedProbClass = CubicSpline( finalMergedPDFdict['x'], p)
     interpolateToTheseTimes=  \
-      np.linspace(np.min(finalMergedPDFdict['x']), np.max(finalMergedPDFdict['x']),nSamples*100)
+      np.linspace(np.min(finalMergedPDFdict['x']), \
+            np.max(finalMergedPDFdict['x']),nSamples*100)
     interpolateToTheseTimes=  \
       np.linspace(-3, 4, nSamples*100)
-    interpolatedProb = \
-      hubbleInterpolaterClass.predictPDF( interpolateToTheseTimes, np.array([0.7, 0.2, -1.9] ))
+      
+    if trueHubble:
 
-    #interpolatedProb = interpolatedProbClass( interpolateToTheseTimes)
+        interpolatedProbClass = CubicSpline( finalMergedPDFdict['x'], \
+                                             finalMergedPDFdict['y'])
+
+        interpolatedProb = interpolatedProbClass( interpolateToTheseTimes)
+    else:
+        interpolatedProb = \
+          hubbleInterpolaterClass.predictPDF( interpolateToTheseTimes, \
+                                        np.array([0.7, 0.3, -1.9] ))
+  
+      
     interpolatedProb[interpolatedProb<0] = 0
     interpolatedProb /= np.sum(interpolatedProb)
     
@@ -134,193 +250,54 @@ def selectionFunctionZmed( nSamples, hubbleParameter, hubbleInterpolaterClass ):
                     p=interpolatedProb, size=np.int(nSamples))
     
     bins = np.max([10, np.int(nSamples/100)])
-    y, x = np.histogram(logTimeDelays, bins=np.linspace(-3,4,100), density=True)
+    y, x = np.histogram(logTimeDelays, \
+                    bins=np.linspace(-3,4,100), density=True)
     dX = (x[1] - x[0])
     xcentres = (x[1:] + x[:-1])/2. + dX/2.
     error = np.sqrt(y*nSamples)/nSamples
 
     cumsumY = np.cumsum( y )  / np.sum(y)
-    cumsumYError = np.sqrt(np.cumsum(error**2))/np.sqrt(np.arange(len(error))+1) 
+    cumsumYError = np.sqrt(np.cumsum(error**2)/(np.arange(len(error))+1))
 
-    
     return {'x':xcentres, 'y':cumsumY, 'error':cumsumYError}
 
-class hubbleInterpolator:
-    '''
-    The idea is to model the PDF and interpolate between source
-    planes
-    '''
+def getModeAndError( samples ):
 
-    def __init__( self, nPrincipalComponents=6, selectionFunctionZmed=2.0):
-        
-        self.nPrincipalComponents = nPrincipalComponents
-        self.SFzMed = selectionFunctionZmed
-        
-    def getTrainingData( self, pklFile = 'trainingData.pkl' ):
-        '''
-        Import all the json files from a given lens redshift
-        '''
-        
-        self.hubbleParameters = \
-          np.array([50., 60., 70., 80., 90., 100.])
-          
-        if os.path.isfile( pklFile):
-            self.features,  self.timeDelays, self.pdfArray =  \
-              pkl.load(open(pklFile, 'rb'))
-            self.nFeatures = len(self.features.dtype)
-            self.features['hubbleParameter'] /= 100.
-            return
-        
-        self.timeDelayDistClasses = []
+    nIterations = np.int(samples.shape[0]/30000)
+    print(nIterations)
+    itPs = np.int(samples.shape[0]/nIterations)
+    maxLike = []
+    for i in range(nIterations):
+        iSample = samples[i*itPs:(i+1)*itPs]
+        y, x = \
+          np.histogram( iSample[(iSample>0.6) &(iSample<0.8)], \
+                            bins=np.linspace(0.5, 1., 50),  \
+                        density=True)
 
-        features = np.array([], dtype=[('hubbleParameter', float), ('zLens',float), ('densityProfile', float)])
-        
-        self.nFeatures = len(features.dtype)
+        xc = (x[1:]+x[:-1])/2.
+        dX =  x[1] - x[0]
+        maxLike.append(xc[np.argmax(y)])
+        #maxLike.append(np.percentile( iSample[(iSample>0.6) &(iSample<0.8)], 50))
 
 
-        self.pdfArray = None
-        dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
+        #yCumSum = np.cumsum(y)*dX
+    
+        #upper = xc[ np.argmin( np.abs(yCumSum[np.argmax(y)] + 0.34 - yCumSum))]
+        #lower = xc[ np.argmin( np.abs(yCumSum[np.argmax(y)] - 0.34 - yCumSum))]
+        #upper = xc[ np.argmin( np.abs( yCumSum -0.84) )]
+        #lower = xc[ np.argmin( np.abs(yCumSum - 0.16) )]
 
-        allFiles = glob.glob(dirD+'/CDM/z*/B*_cluster_0_*.json')
-        rGrid = getDensity.getRadGrid()
-        
-        for iColor, iHubbleParameter in enumerate(self.hubbleParameters):
-            for iFile in allFiles:
-                fileName = iFile.split('/')[-1]
-                zLensStr = fileName.split('/')[-2]
-                zLens = np.float(zLensStr.split('_')[1])
+        #error = np.sqrt(np.sum( y*(xc-maxLike)**2*dX ))
+        #print(error)
+    error = np.sqrt(np.sum((np.array(maxLike)-0.7)**2)/len(maxLike))
+   
 
-                pklFileName = \
-                  '../output/CDM/selectionFunction/SF_%s_%s_%i_lsst.pkl' \
-                  % (zLensStr,fileName,iHubbleParameter )
-              
-            
-                finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
-                finalMergedPDFdict['y'] /= np.max(finalMergedPDFdict['y'])
-            
-                if self.pdfArray is None:
-                    self.pdfArray = finalMergedPDFdict['y']
-                else:
-                    self.pdfArray = \
-                      np.vstack((self.pdfArray, finalMergedPDFdict['y']))
+    maxLikeMean = np.median(np.array(maxLike))
 
-                densityProfile = getDensity.getDensityProfileIndex(iFile, rGrid=rGrid)[0]
-                print(densityProfile)
-                
-                iFeature = np.array( [(iHubbleParameter, zLens, densityProfile )], \
-                    dtype = features.dtype)
+    #error = np.std( samples[(samples>0.6) &(samples<0.8) ])
+    return maxLikeMean, error*100, error*100
 
-                
-                features = np.append( features, iFeature)
-            
-        self.features = features
-        self.timeDelays =  finalMergedPDFdict['x']
-
-        pkl.dump([self.features,  self.timeDelays, self.pdfArray], \
-                     open(pklFile, 'wb'))
-                     
-    def extractPrincipalComponents( self ):
-        '''
-        Now extract the principal components for each halo
-        '''
-        self.pca = PCA(n_components=self.nPrincipalComponents)
-        self.pca.fit( self.pdfArray )
-        self.principalComponents = self.pca.transform( self.pdfArray )
-            
-    def learnPrincipalComponents( self ):
-        '''
-        Using a mixture of Gaussian Processes 
-        predict the distributions of compoentns
-        It will return a list of nPrincipalComponent models that try to
-        learn each component to the data
-        '''
-        
-        #Now regress each component to any hubble value
-        
-        #self.learnedGPforPCAcomponent = []
-        self.predictor = []
-
-        kernel =  0.608**2*Matern(length_scale=0.484, nu=3/2) + \
-          WhiteKernel(noise_level=1e3)
-        
-        #kernel = RationalQuadratic()
-
-        self.nPDF = len(self.features)
-        
-        self.reshapedFeatures = \
-          self.features.view('<f8').reshape((self.nPDF,self.nFeatures))
-          
-        for i in range(self.nPrincipalComponents):
-            
-            gaussProcess = \
-              GaussianProcessRegressor( alpha=10, kernel=kernel)
-
-            print(self.features.shape)
-            gaussProcess.fit( self.reshapedFeatures, self.principalComponents[:,i])
-
-            
-            self.predictor.append(gaussProcess)
-            
-            #cubicSpline = CubicSpline(self.hubbleParameters, self.principalComponents[:,i])
-            #self.cubicSplineInterpolator.append(cubicSpline)
-       
-           
-            
-    def predictPDF( self, timeDelays, inputFeatures ):
-        '''
-        For now compare to the trained data
-        '''
-        
-        predictedComponents = \
-          np.zeros(self.nPrincipalComponents)
-
-        
-        for iComponent in range(self.nPrincipalComponents):
-            
-            predictedComponents[iComponent] = \
-              self.predictor[iComponent].predict(inputFeatures.reshape(1,-1))
-
-        predictedTransform = \
-          self.pca.inverse_transform(  predictedComponents )
-
-        #Just interpolate the x range for plotting
-        pdfInterpolator = \
-          CubicSpline( self.timeDelays, predictedTransform)
-          
-        predicted =   pdfInterpolator(timeDelays)
-
-        if np.any(predicted < -0.1):
-            print(inputFeatures, np.min(predicted))
-            #raise ValueError("Predicted probabilites negative")
-        
-        predicted[ predicted< 0] = 0
-        return predicted
-
-    def plotPredictedPDF( self, inputFeatures):
-        
-        #plot the now predicted PDF
-        plt.figure(0)
-        for i, iFeature in enumerate(inputFeatures):
-
-            
-            predictedTransform = \
-              self.predictPDF( np.linspace(-2, 3, 100), iFeature )
-            
-            print(predictedTransform)
-            plt.plot( np.linspace(-2, 3, 100), predictedTransform, \
-                          label=str(iFeature))
-
-        
-        plotPDF = self.pdfArray[ (self.reshapedFeatures[:,0] == 0.7) & (self.reshapedFeatures[:,1] == 0.74),:]
-        
-        for iHubblePar in range(plotPDF.shape[0]):
-
-            plt.plot( self.timeDelays, plotPDF[iHubblePar,:],  alpha=0.3)
-            
-        plt.xlim(-1,3)
-        plt.legend()
-        plt.show()
-
-        
+    
 if __name__ == '__main__':
+    #plotCornerPlot()
     nonPerfectFittingFunction()

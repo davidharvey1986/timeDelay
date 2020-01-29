@@ -32,7 +32,7 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
         return -np.inf
     if (theta[1] < 0.) | (theta[1] > 1.0):
         return -np.inf
-    if (theta[2] < -2.) | (theta[2] > -1.0):
+    if (theta[2] < -2.1) | (theta[2] > -1.0):
         return -np.inf
     
     cumsumYtheory = np.cumsum( yTheory )/np.sum(yTheory)
@@ -40,7 +40,9 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     prob = np.sum(norm.logpdf( cumsumYtheory[error!=0], \
                     yTrue[error!=0], error[error!=0]))
 
-    prob = 1./np.max( np.abs(cumsumYtheory - yTrue))
+    ##prob = np.sum(-0.5*(cumsumYtheory[error!=0] - yTrue[error!=0])**2/\
+     #                 error[error!=0])
+    
     if np.isnan(prob):
         pdb.set_trace()
         return -np.inf
