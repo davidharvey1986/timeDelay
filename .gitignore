@@ -3,3 +3,5 @@ samples
 exactPDFpickles
 picklesTrueHubble
 picklesDifferentHalo
+*.pkl
+*/*.pkl
