@@ -3,7 +3,7 @@ from convolveDistributionWithLineOfSight import *
 
 def main():
 
-    dataDir = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/CDM/z_0.25'
+    dataDir = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/CDM.old/z_0.25'
     jsonFile = dataDir+'/B002_cluster_0_2_total_sph.fits.py.raw.json'
 
 
@@ -14,7 +14,7 @@ def main():
         cluster = timeDelayDistribution( jsonFile, \
                     newHubbleParameter=iHubbleParameter, \
                     timeDelayBins=np.linspace(1,2,50), \
-                    outputPklFile='../output/CDM/singleSourcePlane/singleSourcePlane_%i.pkl' % iHubbleParameter)
+                    outputPklFile='../output/CDM.old/singleSourcePlane/singleSourcePlane_%i.pkl' % iHubbleParameter)
         sourcePlane = cluster.finalPDF['finalLoS'][-1]
 
 

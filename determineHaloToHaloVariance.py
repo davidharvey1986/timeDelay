@@ -75,7 +75,7 @@ def main():
  
     axisA.set_xlabel(r'log($\Delta T$/ days)', labelpad=-1)
     axisA.set_ylabel(r'P(log($\Delta T$/ days))')
-    axisA.set_xlim(-1.,2.)
+    axisA.set_xlim(-1.,3.)
     #axisB.set_xlabel('Halo Name')
     #axisB.set_ylabel(r'$\beta$')
     #axisA.set_ylim(1e-2,2.)

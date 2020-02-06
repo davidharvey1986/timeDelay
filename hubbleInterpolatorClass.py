@@ -24,7 +24,7 @@ class hubbleInterpolator:
         self.nPrincipalComponents = nPrincipalComponents
         self.SFzMed = selectionFunctionZmed
         
-    def getTrainingData( self, pklFile = 'pickles/trainingData.pkl' ):
+    def getTrainingData( self, pklFile = 'exactPDFpickles/trainingData.pkl' ):
         '''
         Import all the json files from a given lens redshift
         '''
@@ -113,12 +113,12 @@ class hubbleInterpolator:
         #self.learnedGPforPCAcomponent = []
         self.predictor = []
 
-        #kernel =  Matern(length_scale=1., nu=3/2) + \
-        #  WhiteKernel(noise_level=1e3)
+        kernel =  Matern(length_scale=1., nu=3./2.) + \
+          WhiteKernel(noise_level=1e3)
         
         #kernel =  ExpSineSquared(length_scale=2)
-        kernel =  RBF(length_scale=weight) + \
-          WhiteKernel(noise_level=1e3)
+        #kernel =  RBF(length_scale=1.) + \
+        #  WhiteKernel(noise_level=1.)
 
         self.nPDF = len(self.features)
         
@@ -128,7 +128,7 @@ class hubbleInterpolator:
         for i in range(self.nPrincipalComponents):
             
             gaussProcess = \
-              GaussianProcessRegressor( alpha=1., kernel=kernel)
+              GaussianProcessRegressor( alpha=1e-3, kernel=kernel)
 
             gaussProcess.fit( self.reshapedFeatures, self.principalComponents[:,i])
 
@@ -143,7 +143,9 @@ class hubbleInterpolator:
 
         logLike = 0
         for iGaussProcess in self.predictor:
+
             logLike += iGaussProcess.log_marginal_likelihood()
+            
         return logLike
     def predictPDF( self, timeDelays, inputFeatures ):
         '''
@@ -169,7 +171,7 @@ class hubbleInterpolator:
         predicted =   pdfInterpolator(timeDelays)
 
         #if np.any(predicted < -0.1):
-         #   print(inputFeatures, np.min(predicted))
+        #    print(inputFeatures, np.min(predicted))
             #raise ValueError("Predicted probabilites negative")
         
         predicted[ predicted< 0] = 0
@@ -193,7 +195,6 @@ class hubbleInterpolator:
         plotPDF = self.pdfArray[ (self.reshapedFeatures[:,0] == 0.7) & (self.reshapedFeatures[:,1] == 0.74),:]
         
         for iHubblePar in range(plotPDF.shape[0]):
-
             plt.plot( self.timeDelays, plotPDF[iHubblePar,:],  alpha=0.3)
             
         plt.xlim(-1,3)

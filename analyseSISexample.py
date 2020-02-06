@@ -15,7 +15,7 @@ from astropy.convolution import convolve, Gaussian1DKernel, Box1DKernel
 def main():
     velocityDispersions =  np.linspace(200,300,3)
     color=['blue','green','purple','pink']
-
+    fig = plt.figure()
     gs = gridspec.GridSpec(5, 1)
     ax1 = plt.subplot(gs[:3,0])
     ax2 = plt.subplot(gs[3:, 0])
@@ -36,34 +36,40 @@ def main():
                                           weight=True, \
                                     bins=np.linspace(-1,3,150) )
         xc -= np.log(0.94)
-
+        y = np.cumsum(y)/np.sum(y)
+        yError =  np.sqrt(np.cumsum(yError**2)/(np.arange(len(yError))+1))
         #y = 1. - np.cumsum(y*(xc[1] - xc[0]))
         #yError = np.sqrt(np.cumsum(yError**2))
-        ax1.errorbar( xc , y, yerr=yError,fmt='.', \
+        ax1.errorbar( xc , 1.-y, yerr=yError,fmt='.', \
                 color=color[iColor], label=str(iVelocityDispersion)+' km/s')
         
 
-        xAnalytical, yAnalytical = getAnalyticExpression( xc, iVelocityDispersion, zSource=5., zLens=0.2 )
+        xAnalytical, yAnalytical = \
+          getAnalyticExpression( xc, iVelocityDispersion, zSource=5., \
+                                zLens=0.2 )
         #yAnalytical = 1. - np.cumsum(yAnalytical)*(xAnalytical[1]-xAnalytical[0])
 
+        yAnalytical = np.cumsum(yAnalytical)/np.sum(yAnalytical)
         
-        ax1.plot(xAnalytical, yAnalytical,':', \
+        ax1.plot(xAnalytical, 1.-yAnalytical,':', \
                      color=color[iColor])
-        ax2.errorbar( xc, np.log10(y)-np.log10(yAnalytical),  \
+        ax2.errorbar( xc, y-yAnalytical,  \
                           fmt='-', color=color[iColor])
 
     ax1.plot(0,0,':',label='Analytical')
     ax1.legend()
     ax1.set_xticklabels([])
+    box = dict(color='white')
+    ax1.set_xlabel(r'$log(\Delta t)$', bbox=box)
+    ax1.set_ylabel(r'P(>$log(\Delta t)$)', bbox=box)
+    ax2.set_ylabel(r'$\Delta P>log(\Delta t)$)', bbox=box)
     
-    ax1.set_xlabel(r'$log(\Delta t)$')
-    ax1.set_ylabel(r'p($log(\Delta t)$)')
-    ax2.set_ylabel(r'$\Delta$log(p(log($\Delta t$)) )')
-
-    ax2.set_ylim(-0.15,0.15)
-    ax1.set_yscale('log')
+    fig.align_ylabels([ax1,ax2])
+    
+    ax2.set_ylim(-0.05,0.05)
+    #ax1.set_yscale('log')
     ax1.set_xlim(0.25,1.85)
-    ax1.set_ylim(0.07,5.)
+    ax1.set_ylim(0.0,1.)
 
     ax2.set_xlim(0.25,1.85)
     ax2.plot([0., 2.2], [0.,0.], '--')

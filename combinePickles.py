@@ -3,7 +3,7 @@ import pickle as pkl
 import numpy as np
 import glob
 
-def mainExact():
+def main():
 
     for i in glob.glob('pickles/multiFitSamples_*.pkl'):
         samplesA = pkl.load(open(i, 'rb'))
@@ -15,7 +15,7 @@ def mainExact():
         pkl.dump(total, open('exactPDFpickles/%s' % i.split('/')[1], 'wb'))
         print(samplesA.shape, samplesB.shape, total.shape)
 
-def main():
+def mainTrue():
 
     for i in glob.glob('picklesTrueHubbleOld/multiFitSamples_*.pkl'):
         samplesA = pkl.load(open(i, 'rb'))

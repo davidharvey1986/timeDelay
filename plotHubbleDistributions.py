@@ -195,11 +195,12 @@ def compareConvolvedToUnconvolvedLoS():
 
     dx = finalMergedPDFdict['x'][1] - finalMergedPDFdict['x'][0]
     finalMergedPDFdict['y'] /= np.sum(finalMergedPDFdict['y'])*dx
-    finalMergedPDFdict['yLensPlane'] /= np.sum(finalMergedPDFdict['yLensPlane'])*dx
+    finalMergedPDFdict['yLensPlane'] /= \
+      np.sum(finalMergedPDFdict['yLensPlane'])*dx
     
     pdfInLinearTime = finalMergedPDFdict['y'] / ( 10**finalMergedPDFdict['x']*np.log(10.) )
     colors = ['orange','black']
-    microLensing = [1.,2]
+    microLensing = [1.,2.]
     for i, iMicro in enumerate(microLensing):
         pdfInLinearTimeSmoothed = gauss( pdfInLinearTime, iMicro)
         pdfInLogTimeSmoothed = pdfInLinearTimeSmoothed * ( 10**finalMergedPDFdict['x']*np.log(10.) )
@@ -231,7 +232,7 @@ def compareConvolvedToUnconvolvedLoS():
 
 
        
-    axisB.plot([-1,1.5],[0,0],'k--')
+    axisB.plot([-1,3.],[0,0],'k--')
     axisA.legend()
     
  
@@ -240,10 +241,10 @@ def compareConvolvedToUnconvolvedLoS():
 
     axisB.set_ylabel(r'$P-P_{\rm int}$')
 
-    axisA.set_xlim(-1.,1.5)
-    axisB.set_xlim(-1.,1.5)
-    axisA.set_ylim(1e-2,1.5)
-    axisB.set_ylim(-0.3,0.3)
+    axisA.set_xlim(-1.,3)
+    axisB.set_xlim(-1.,3)
+    axisA.set_ylim(0.,1.5)
+    axisB.set_ylim(-0.08,0.08)
     #axisB.set_yscale('log')
     axisA.set_xticklabels([])
 
@@ -406,6 +407,6 @@ if __name__ == '__main__':
     #plotMassBins()
     #compareConvolvedToUnconvolvedLoS()
     allLensesDifferentHubbleValues()
-    #idfferentLensRedshiftsSingleHubble()
+    #dfferentLensRedshiftsSingleHubble()
 
 

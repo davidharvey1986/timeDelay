@@ -12,63 +12,18 @@ def main(fiducialHubble = 70. ):
     on the power law index
     '''
     fig = plt.figure(figsize=(6,7))
-    gs = gridspec.GridSpec(15,1)
+    gs = gridspec.GridSpec(13,1)
     axisC = plt.subplot( gs[0:4,0] )
     axisA = plt.subplot( gs[5:12,0])
-    axisB = plt.subplot( gs[13:,0])
 
     zMed = np.linspace(1.5, 2.5, 3)
     zMax = 8.
     axisC.set_xlabel(r'Source Redshift, $z_s$')
     axisC.set_ylabel(r'P($z_s$)')
 
-    plotLSST( [axisA,axisB,axisC], fiducialHubble)
-    plotPDFwithNoSelectionFunction(  [axisA,axisB,axisC], fiducialHubble)
-    #For aesthetics                                                         
-    jet = cm = plt.get_cmap('Reds')
-    cNorm  = colors.Normalize(vmin=np.min(zMed)*0.98, \
-                            vmax=np.max(zMed))
-    scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=jet)
-    #####
-    zs = np.linspace(0., zMax, 100)
+    plotLSST( [axisA,axisC], fiducialHubble)
+    plotPDFwithNoSelectionFunction(  [axisA,axisC], fiducialHubble)
 
-    
-    for i in zMed:
-        weights = getSourceRedshiftWeight( zs, zMed=i)
-        dz = zs[1] - zs[0]
-        axisC.plot( zs, weights/(np.sum(weights)*dz),
-                        color=scalarMap.to_rgba(i))
-    
-  
-
-        
-    for iColor, izMed in enumerate(zMed):
-        
-        color = scalarMap.to_rgba(izMed)
-        
-        pklFileName = '../output/CDM/selectionFunction/SF_%i_%0.2f.pkl' \
-          % (fiducialHubble, izMed )
-          
-        finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
-
-        #finalMergedPDFdict['y'] /= np.max(finalMergedPDFdict['y'])
-        finalMergedPDFdict['y'] /= np.sum( finalMergedPDFdict['y'])*(finalMergedPDFdict['x'][1]- finalMergedPDFdict['x'][0])
-
-        axisA.plot( finalMergedPDFdict['x'], finalMergedPDFdict['y'], \
-                color=color, label= r"log($M/M_\odot$)=%0.2f" % np.float(izMed))
-
-            
-        #####FIT POWER LAW TO THE DISTRIBUTION##############
-        powerLawFitClass = powerLawFit( finalMergedPDFdict )
-                                             
-     
-        ######################################################
-        axisB.errorbar( np.float( izMed), \
-                    powerLawFitClass.params['params'][1], \
-                    yerr=powerLawFitClass.params['error'][1], \
-                    fmt='o', color=color)
-
-        
 
     #axisA.set_yscale('log')
 
@@ -78,8 +33,8 @@ def main(fiducialHubble = 70. ):
 
     axisA.set_xlim(-2.,3.)
     #axisA.set_ylim(1e-2,2.)
-    axisB.set_xlabel(r'Median Source Redshift, $z_{\rm med}$')
-    axisB.set_ylabel(r'$\beta$')
+    #axisB.set_xlabel(r'Median Source Redshift, $z_{\rm med}$')
+    #axisB.set_ylabel(r'$\beta$')
     plt.savefig('../plots/selectionFunctionEffect.pdf')
 
     plt.show()
@@ -94,7 +49,7 @@ def plotLSST( axisArr, fiducialHubble ):
     selectFunc = np.array(selectFunc)
 
     dZ = redshifts[1] - redshifts[0]
-    axisArr[2].plot( redshifts, selectFunc/(np.sum(selectFunc)*dZ))
+    axisArr[1].plot( redshifts, selectFunc/(np.sum(selectFunc)*dZ))
 
     
     color = 'black'
@@ -110,15 +65,6 @@ def plotLSST( axisArr, fiducialHubble ):
     axisArr[0].plot( finalMergedPDFdict['x'], finalMergedPDFdict['y'], \
                     color=color, label= "LSST")
             
-    #####FIT POWER LAW TO THE DISTRIBUTION##############
-    powerLawFitClass = powerLawFit( finalMergedPDFdict )
-                                             
-     
-    ######################################################
-    axisArr[1].errorbar( 2., \
-                    powerLawFitClass.params['params'][1], \
-                    yerr=powerLawFitClass.params['error'][1], \
-                    fmt='o', color=color)
                     
 def plotPDFwithNoSelectionFunction( axArr, fiducialHubble , color='blue' ):
 
@@ -126,8 +72,8 @@ def plotPDFwithNoSelectionFunction( axArr, fiducialHubble , color='blue' ):
           % (fiducialHubble )
           
     finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
-    finalMergedPDFdict['yBiased'] /= np.sum( finalMergedPDFdict['yBiased'])*(finalMergedPDFdict['x'][1]- finalMergedPDFdict['x'][0])
-    axArr[0].plot( finalMergedPDFdict['x'], finalMergedPDFdict['yBiased'], \
+    finalMergedPDFdict['y'] /= np.sum( finalMergedPDFdict['y'])*(finalMergedPDFdict['x'][1]- finalMergedPDFdict['x'][0])
+    axArr[0].plot( finalMergedPDFdict['x'], finalMergedPDFdict['y'], \
                     color=color, label= "No Selection Function")
 
                     

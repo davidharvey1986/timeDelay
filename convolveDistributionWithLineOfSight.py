@@ -129,7 +129,7 @@ def saveAllLensesForMultipleHubbleParameters(rerun=False):
     allFiles = glob.glob(dirD+'/CDM/z*/B**cluster_0_*_total_*.json')
 
 
-    hubbleParameters = [100., 50., 60., 70., 80., 90.]
+    hubbleParameters = [80.] #[100., 50., 60., 70., 80., 90.]
 
     for iHubbleParameter in hubbleParameters:
         pklFileName = '../output/CDM/combinedPDF_'+str(iHubbleParameter)+'.pkl'
@@ -358,6 +358,6 @@ if __name__ == "__main__":
     #saveAllRedshifts( rerun=True)
     #saveAllRedshifts( rerun=True, integrate=False)
     ##saveIndividualHalosAndRedshifts( rerun=True)
-    saveIndividualHalos( rerun=True)
-    #saveAllLensesForMultipleHubbleParameters( rerun=True)
+    #saveIndividualHalos( rerun=True)
+    saveAllLensesForMultipleHubbleParameters( rerun=True)
 

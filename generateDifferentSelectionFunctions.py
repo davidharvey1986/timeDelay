@@ -9,6 +9,32 @@ from scipy.stats import lognorm
 
 import lsstSelectionFunction as lsstSelect
 
+def selectionFunctionEnsembleHalos():
+    dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
+             
+    
+    hubbleParameters = \
+      np.array([50., 60., 70., 80., 90., 100.])
+    #hubbleParameter = 70.
+    hubbleParameters = [70.]
+    halos = ['B002','B005','B008','B009']
+    for halo in halos:
+        allFiles = glob.glob(dirD+'/CDM/z*/%s_cluster_0_*.json' % halo )
+
+        for hubbleParameter in hubbleParameters:
+        
+  
+            
+            pklFileName = \
+              '../output/CDM/selectionFunction/SF_%s_%i_lsst.pkl' \
+              % (halo,hubbleParameter )
+            finalMergedPDFdict = \
+              selectionFunction(allFiles, \
+                                newHubbleParameter=hubbleParameter,\
+                                useLsst = True)
+                                
+            pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
+            
 def selectionFunctionIndividualLenses( ):
     dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
              
@@ -103,9 +129,9 @@ def selectionFunction( listOfJsonFiles, newHubbleParameter=None, \
            timeDelayDistribution( iJsonFile, \
                             newHubbleParameter=newHubbleParameter)
         
-         z0 = cluster.zLens
-         dzLens = zLenses[ np.arange(len(zLenses))[ z0 == zLenses]+1] - z0
-
+         z0lens = cluster.zLens
+         dzLens = zLenses[ np.arange(len(zLenses))[ z0lens == zLenses]+1] - z0lens
+         z0source  = cluster.zLens
          for iSourcePlane in cluster.finalPDF['finalLoS']:
 
              if useLsst:
@@ -116,13 +142,13 @@ def selectionFunction( listOfJsonFiles, newHubbleParameter=None, \
                   getSourceRedshiftWeight( iSourcePlane.data['z'], medianRedshift)
 
              
-             dZ = iSourcePlane.data['z'] - z0
+             dZ = iSourcePlane.data['z'] - z0source
              
              iWeight = \
                np.repeat(iSourcePlane.data['weight'],\
                              len(matchToThisXaxis))*\
                     selectionFunction*dZ*dzLens
-             z0 = iSourcePlane.data['z']
+             z0source = iSourcePlane.data['z']
              
              #they dont all have the same x, so match to that
              iMatchPdf = \
@@ -196,4 +222,5 @@ def getSourceRedshiftWeight( z, zMed=1.0 ):
     return weight
 
 if __name__ == "__main__":
-    selectionFunctionIndividualLenses()
+    selectionFunctionEnsembleHalos()
+    #selectFunctionForAllLenses()

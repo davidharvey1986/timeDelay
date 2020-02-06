@@ -228,4 +228,4 @@ def getAndPlotTrend( x, y, axis, fmt, color='grey', pltX=None, sigma=None):
 
 if __name__ == '__main__':
     main()
-distance
+

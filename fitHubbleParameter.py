@@ -10,6 +10,8 @@ import pickle as pkl
 from scipy.optimize import curve_fit
 import emcee
 from scipy.stats import norm
+from scipy.stats import chi2
+
 import numpy as np
 import os
 import ipdb as pdb
@@ -19,6 +21,14 @@ from matplotlib import pyplot as plt
 
 def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
 
+
+    maxProbCum =  np.cumsum(hubbleInterpolator.predictPDF( xTrue, np.array([0.7,0.3,-1.9]) ))
+    maxProbCum /= np.max(maxProbCum)
+
+    
+    maxProb = 1./np.sum((maxProbCum - yTrue)**2)
+
+    
     yTheory = hubbleInterpolator.predictPDF( xTrue, theta )
     
     
@@ -28,7 +38,7 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
 
     if np.any(yTheory < 0):
         return -np.inf
-    if (theta[0] < 0.5) | (theta[0] > 1.0):
+    if (theta[0] < 0.55) | (theta[0] > 0.85):
         return -np.inf
     if (theta[1] < 0.) | (theta[1] > 1.0):
         return -np.inf
@@ -37,11 +47,12 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     
     cumsumYtheory = np.cumsum( yTheory )/np.sum(yTheory)
 
-    prob = np.sum(norm.logpdf( cumsumYtheory[error!=0], \
-                    yTrue[error!=0], error[error!=0]))
-
-    ##prob = np.sum(-0.5*(cumsumYtheory[error!=0] - yTrue[error!=0])**2/\
-     #                 error[error!=0])
+    prob = np.sum(norm.logpdf( cumsumYtheory[error!=0], yTrue[error!=0], scale=error[error!=0]))
+    
+    #prob = 1./np.sum((cumsumYtheory - yTrue)**2)
+    
+    #if (prob > maxProb):
+    #    pdb.set_trace()
     
     if np.isnan(prob):
         pdb.set_trace()
@@ -53,8 +64,7 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
 class fitHubbleParameterClass:
     
     def __init__( self, pdf, hubbleInterpolator,\
-                      yMax=None, yMin=1e-2, inputYvalue='y', \
-                      loadPklFile='loadPklFile.pkl'):
+                      yMax=None, yMin=1e-2, inputYvalue='y'):
         '''
         Init the pdf 
           
@@ -62,9 +72,7 @@ class fitHubbleParameterClass:
         
         '''
         self.hubbleInterpolator = hubbleInterpolator
-       
-        self.loadPklFile = loadPklFile
-            
+                   
         self.pdf = pdf
        
         self.fitHubble()
@@ -73,37 +81,33 @@ class fitHubbleParameterClass:
 
     def fitHubble( self, nthreads=4  ):
 
-        if (os.path.isfile(self.loadPklFile )):
-            self.samples = pkl.load(open(self.loadPklFile, 'rb'))
-        else:
+  
+        nwalkers = 20
 
-        #No zeros
-            nwalkers = 20
-
-            ndim = 3
-            burn_len=500
-            chain_len=1000
-            pos0 = np.random.rand(nwalkers,ndim)
-            pos0[:,0] = pos0[:,0]*0.5+0.5
-            pos0[:,1] = pos0[:,1]*0.5
-            pos0[:,2] = pos0[:,2]*-1-1.
-
-            args = (self.pdf['x'], self.pdf['y'], \
+        ndim = 3
+        burn_len=100
+        chain_len=1000
+        pos0 = np.random.rand(nwalkers,ndim)
+        pos0[:,0] = np.random.rand( nwalkers) * 0.05 + 0.7
+        pos0[:,1] =  np.random.randn( nwalkers) * 0.1 + 0.3
+        pos0[:,2] =  np.random.randn( nwalkers) * 0.1 - 1.9
+        
+        args = (self.pdf['x'], self.pdf['y'], \
                     self.pdf['error'], self.hubbleInterpolator )
 
-            dmsampler = emcee.EnsembleSampler(nwalkers, ndim, \
-                                          lnprob, \
+        dmsampler = emcee.EnsembleSampler(nwalkers, ndim, \
+                                            lnprob, \
                                           args=args, \
-                                          threads=nthreads,\
-                                        )
+                                          threads=nthreads)
                                           
-            pos, prob, state  = dmsampler.run_mcmc(pos0, burn_len)
+        pos, prob, state  = dmsampler.run_mcmc(pos0, burn_len)
 
 
     
-            pos, prob, state  = dmsampler.run_mcmc(pos, chain_len)
-            self.samples = dmsampler.flatchain
-        
+        pos, prob, state  = dmsampler.run_mcmc(pos, chain_len,\
+                                        progress=True)
+        self.samples = dmsampler.flatchain
+
         errorLower, median, errorUpper = \
           np.percentile(self.samples, [16, 50, 84], axis=0)
 
