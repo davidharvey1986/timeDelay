@@ -19,8 +19,9 @@ class hubbleInterpolator:
     planes
     '''
 
-    def __init__( self, nPrincipalComponents=6):
+    def __init__( self, nPrincipalComponents=7, minimumTimeDelay=0.):
         
+        self.logMinimumTimeDelay = np.log10(np.max([minimumTimeDelay, 0.1]))
         self.nPrincipalComponents = nPrincipalComponents
         
     def getTrainingData( self, pklFile = 'exactPDFpickles/trainingData.pkl' ):
@@ -66,7 +67,10 @@ class hubbleInterpolator:
               
             
                 finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
-                finalMergedPDFdict['y'] /= np.max(finalMergedPDFdict['y'])
+                finalMergedPDFdict['y'] = finalMergedPDFdict['y'][ finalMergedPDFdict['x'] > self.logMinimumTimeDelay]
+                finalMergedPDFdict['x'] = finalMergedPDFdict['x'][ finalMergedPDFdict['x'] > self.logMinimumTimeDelay]
+
+                finalMergedPDFdict['y'] = np.cumsum(finalMergedPDFdict['y'])/np.sum(finalMergedPDFdict['y'])
             
                 if self.pdfArray is None:
                     self.pdfArray = finalMergedPDFdict['y']

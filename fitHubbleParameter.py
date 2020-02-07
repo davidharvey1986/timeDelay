@@ -22,22 +22,22 @@ from matplotlib import pyplot as plt
 def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
 
 
-    maxProbCum =  np.cumsum(hubbleInterpolator.predictPDF( xTrue, np.array([0.7,0.3,-1.9]) ))
-    maxProbCum /= np.max(maxProbCum)
+    #maxProbCum =  np.cumsum(hubbleInterpolator.predictPDF( xTrue, np.array([0.7,0.3,-1.9]) ))
+    #maxProbCum /= np.max(maxProbCum)
 
     
-    maxProb = 1./np.sum((maxProbCum - yTrue)**2)
+    #maxProb = 1./np.sum((maxProbCum - yTrue)**2)
 
     
-    yTheory = hubbleInterpolator.predictPDF( xTrue, theta )
-    
+    cumsumYtheory = hubbleInterpolator.predictPDF( xTrue, theta )
     
 
-    if np.any(np.isfinite(yTheory) == False):
-        return -np.inf
 
-    if np.any(yTheory < 0):
-        return -np.inf
+    #if np.any(np.isfinite(yTheory) == False):
+    #    return -np.inf
+
+    #if np.any(yTheory < 0):
+     #   return -np.inf
     if (theta[0] < 0.55) | (theta[0] > 0.85):
         return -np.inf
     if (theta[1] < 0.) | (theta[1] > 1.0):
@@ -45,15 +45,14 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     if (theta[2] < -2.1) | (theta[2] > -1.0):
         return -np.inf
     
-    cumsumYtheory = np.cumsum( yTheory )/np.sum(yTheory)
+    #cumsumYtheory = np.cumsum( yTheory )/np.sum(yTheory)
 
     prob = np.sum(norm.logpdf( cumsumYtheory[error!=0], yTrue[error!=0], scale=error[error!=0]))
     
     #prob = 1./np.sum((cumsumYtheory - yTrue)**2)
     
     #if (prob > maxProb):
-    pdb.set_trace()
-    
+
     if np.isnan(prob):
         pdb.set_trace()
         return -np.inf

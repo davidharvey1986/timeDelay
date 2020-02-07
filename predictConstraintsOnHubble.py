@@ -18,53 +18,6 @@ from matplotlib import rcParams
 rcParams["font.size"] = 16
 from scipy.ndimage import gaussian_filter as gauss
 
-def plotDifferentHalos(sampleSize=10000):
-
-    labels = \
-      [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$']
-    ndim = 3
-    figcorner, axarr = plt.subplots(ndim,ndim,figsize=(12,12))
-    color = ['blue','red','green','cyan']
-
-    for icolor, differentHalo in enumerate(['B002','B008']):
-        samples = getMCMCchainForSamplesSize(sampleSize, 10, 70., None, differentHalo=differentHalo)
-        
-
-        for i in axarr[:,0]:
-            i.plot([0.7,.7],[-2,10],'k--')
-
-        nsamples = samples.shape[0]                     
-        corner.corner(samples, \
-                      bins=100, smooth=True, \
-                      plot_datapoints=False,
-                      fig=figcorner, \
-                      labels=labels, plot_density=True, \
-                      weights=np.ones(nsamples)/nsamples,\
-                    color=color[icolor],\
-                          levels=(0.68,), labelsize=15,\
-                          truth_color='black')
-
-    axarr[1,1].set_xlim( 0.4, 0.5)
-    axarr[2,2].set_xlim( -1.9, -1.8)
-    axarr[1,0].set_ylim( 0.4, 0.5)
-    axarr[2,0].set_ylim( -1.9, -1.8)
-    axarr[2,1].set_ylim( -1.9, -1.8)
-    axarr[2,1].set_xlim( 0.4, 0.5)
-    
-    axarr[0,0].set_xlim( 0.65, 0.75)
-    axarr[1,0].set_xlim( 0.65, 0.75)
-    axarr[2,0].set_xlim( 0.65, 0.75)
-    
-
-    hundreds = mlines.Line2D([], [], color='blue', label=r'Subsample 1')
-    thousand = mlines.Line2D([], [], color='red', label='Subsample 2')
-    
-    axarr[0,1].legend(handles=[hundreds,thousand], \
-        bbox_to_anchor=(0., 0.25, 1.0, .0), loc=4)
-   
-    plt.savefig('../plots/degenerciesDifferentHalo.pdf')
-    plt.show()
-
 
     
 def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
@@ -76,8 +29,8 @@ def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
     figcorner, axarr = plt.subplots(ndim,ndim,figsize=(12,12))
     color = ['blue','red','green','cyan']
     
-    for icolor, sampleSize in enumerate([100,1000,10000]):
-        samples = getMCMCchainForSamplesSize(sampleSize, 10, 70., None,  trueHubble=trueHubble)
+    for icolor, sampleSize in enumerate([7943]):
+        samples = getMCMCchainForSamplesSize(sampleSize, 10, 70., None,  minimumTimeDelay=10. )#trueHubble=trueHubble)
         
         if (not trueHubble):
             truths  = [0.7, 0.4, -1.75]
@@ -138,7 +91,7 @@ def nonPerfectFittingFunction(nComponents=5):
     inputHubbleParameter = 70.
       
     sampleSizes, estimates = \
-      getPredictedConstraints(inputHubbleParameter, differentHalo=None, trueHubble=True)
+      getPredictedConstraints(inputHubbleParameter, minimumTimeDelay=10.)
     estimates /=inputHubbleParameter/100.
 
     fig = plt.figure(figsize=(10,6))
@@ -168,17 +121,20 @@ def nonPerfectFittingFunction(nComponents=5):
     plt.show()
 
 def getPredictedConstraints(inputHubbleParameter, \
-                                nIterations = 10,\
-                                nSampleSizes = 21,\
+                                nIterations = 30,\
+                                nSampleSizes = 11,\
                                 exactIndex=False,\
                                 trueHubble=False,\
                                 differentHalo=None,\
-                                minmumTimeDelay=0.):
+                                minimumTimeDelay=0.):
 
 
 
-    hubbleInterpolaterClass = hubbleInterpolator( )
-    hubbleInterpolaterClass.getTrainingData()
+    hubbleInterpolaterClass = hubbleInterpolator( minimumTimeDelay=minimumTimeDelay)
+    if minimumTimeDelay > 0:
+        hubbleInterpolaterClass.getTrainingData(pklFile='picklesMinimumDelay/trainingData.pkl')
+    else:
+        hubbleInterpolaterClass.getTrainingData('exactPDFpickles/trainingData.pkl')
     hubbleInterpolaterClass.extractPrincipalComponents()
     hubbleInterpolaterClass.learnPrincipalComponents()
 
@@ -188,7 +144,7 @@ def getPredictedConstraints(inputHubbleParameter, \
     estimates = np.zeros(nSampleSizes)
     
     #Loop through each sample size
-    for i, iSampleSize in enumerate(sampleSizes):
+    for i, iSampleSize in enumerate(sampleSizes[8:]):
         print("Sample Size: %i" % (iSampleSize))
         
         samples = \
@@ -302,8 +258,9 @@ def selectRandomSampleOfTimeDelays( nSamples, hubbleParameter, \
         interpolatedProb = interpolatedProbClass( interpolateToTheseTimes)
     else:
         theta = np.array([0.7, 0.4, -1.75] )
-        interpolatedProb = hubbleInterpolaterClass.predictPDF( interpolateToTheseTimes, theta )
-  
+        interpolatedCumSum = hubbleInterpolaterClass.predictPDF( interpolateToTheseTimes, theta )
+        interpolatedProb = undoCumSum( interpolatedCumSum)
+      
       
     interpolatedProb[interpolatedProb<0] = 0
     interpolatedProb /= np.sum(interpolatedProb)
@@ -317,7 +274,7 @@ def selectRandomSampleOfTimeDelays( nSamples, hubbleParameter, \
     
     bins = np.max([10, np.int(nSamples/100)])
     y, x = np.histogram(logTimeDelays, \
-                    bins=np.linspace(-1,3,100), density=True)
+                    bins=np.linspace(logMinimumTimeDelay,3,100), density=True)
                     
     dX = (x[1] - x[0])
     xcentres = (x[1:] + x[:-1])/2.
@@ -328,9 +285,7 @@ def selectRandomSampleOfTimeDelays( nSamples, hubbleParameter, \
     cumsumY = np.cumsum( y )  / np.sum(y)
     cumsumYError = np.sqrt(np.cumsum(error**2)/(np.arange(len(error))+1))
 
-    return {'x':xcentres[xcentres >= logMinimumTimeDelay], \
-            'y':cumsumY[xcentres >= logMinimumTimeDelay], \
-                'error':cumsumYError[xcentres >= logMinimumTimeDelay]}
+    return {'x':xcentres+dX/2., 'y':cumsumY,  'error':cumsumYError}
 
 def getModeAndError( samples ):
 
@@ -370,8 +325,17 @@ def getModeAndError( samples ):
     error  = np.std(samples[(samples>0.6) & (samples<0.8)])   
     return maxLikeMean, error*100, error*100
 
-    
+def undoCumSum(cumulative):
+    output = [0] * len(cumulative)
+    for i in range(len(cumulative)-1):
+        output[i+1] = cumulative[i+1] - cumulative[i]
+    output[0] = cumulative[0]
+
+    return np.array(output)
+
+
 if __name__ == '__main__':
     #plotCornerPlot()
     #plotDifferentHalos()
     nonPerfectFittingFunction()
+#

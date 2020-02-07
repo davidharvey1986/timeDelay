@@ -11,17 +11,17 @@ def main(nBins=6):
     powerLawIndex = np.linspace(-2,-1.,nBins)
     redshift = np.linspace(0.22,1.02,nBins) 
     hubbleParam = np.linspace(.5,1.,nBins)
-    interpolateToTheseTimes=   np.linspace(-1, 3, 1000)
+    interpolateToTheseTimes=   np.linspace(0, 3, 1000)
     hubbleInterpolaterClass = hubbleInterpolator()
-    hubbleInterpolaterClass.getTrainingData()
+    hubbleInterpolaterClass.getTrainingData(pklFile='picklesMinimumDelay/trainingData.pkl')
     hubbleInterpolaterClass.extractPrincipalComponents()
 
-    for i in 10**np.linspace(-4,4, 10):
-        hubbleInterpolaterClass.learnPrincipalComponents(weight=i)
- 
-    for i, iPL in enumerate([powerLawIndex[0]]):
+    #for i in 10**np.linspace(-4,4, 10):
+     #   hubbleInterpolaterClass.learnPrincipalComponents(weight=i)
+    hubbleInterpolaterClass.learnPrincipalComponents()
+    for i, iPL in enumerate(powerLawIndex):
         print(i)
-        for j, iRedshift in enumerate([redshift[0]]):
+        for j, iRedshift in enumerate(redshift):
             for k, iHubble in enumerate(hubbleParam):
                 interpolatedProb = \
                   hubbleInterpolaterClass.predictPDF( interpolateToTheseTimes, \
@@ -39,7 +39,7 @@ def plotPCAanalysis(nComponents=7):
     scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=jet)
     #####
     
-    fig, axarr = plt.subplots( 2, 1, figsize=(14,6) )
+    fig, axarr = plt.subplots( 2, 2, figsize=(14,6) )
     box = dict(pad=0, color='white')
     plt.subplots_adjust(hspace=0)
 
@@ -50,7 +50,7 @@ def plotPCAanalysis(nComponents=7):
         print(iNumPrincipalComponents)
         hubbleInterpolaterClass = \
           hubbleInterpolator(nPrincipalComponents=np.int(iNumPrincipalComponents))
-        hubbleInterpolaterClass.getTrainingData()
+        hubbleInterpolaterClass.getTrainingData(pklFile='picklesMinimumDelay/trainingData.pkl')
         hubbleInterpolaterClass.extractPrincipalComponents()
         hubbleInterpolaterClass.learnPrincipalComponents()
         AICc.append(hubbleInterpolaterClass.getGaussProcessLogLike())

@@ -81,9 +81,9 @@ def main():
 
 def testSourcePlaneConvergence():
 
-    resolutions = [0.25, 1.0, 2., 4.0]
+    resolutions = [0.25, 1.0, 2., 4.0, 6.0]
     
-    color=['blue','green','purple','pink']
+    color=['blue','green','purple','pink','cyan']
     fig = plt.figure()
     gs = gridspec.GridSpec(5, 1)
     ax1 = plt.subplot(gs[:3,0])
@@ -133,7 +133,7 @@ def testSourcePlaneConvergence():
         
         #yError = np.sqrt(np.cumsum(yError**2))
         ax1.errorbar( xc , 1.-y, yerr=yError,fmt='.', \
-                color=color[iColor], label=str(1./iResolution/10.)+' kpc')
+                color=color[iColor], label='%0.3f kpc' % (1./iResolution/10.))
         
 
 
