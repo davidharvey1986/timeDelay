@@ -78,9 +78,94 @@ def main():
     
     plt.savefig('../plots/analyseSIS.pdf')
     plt.show()
-        
+
+def testSourcePlaneConvergence():
+
+    resolutions = [0.25, 1.0, 2., 4.0]
     
-def getAnalyticExpression( logTimeDelay, velocityDispersion, zSource=1., zLens=0.2 ):
+    color=['blue','green','purple','pink']
+    fig = plt.figure()
+    gs = gridspec.GridSpec(5, 1)
+    ax1 = plt.subplot(gs[:3,0])
+    ax2 = plt.subplot(gs[3:, 0])
+    plt.subplots_adjust(hspace=0)
+
+
+    x= np.linspace(-1,3,150)
+    xc = (x[1:] + x[:-1])/2.
+    xAnalytical, yAnalytical = \
+          getAnalyticExpression( xc, 250., zSource=5., \
+                                zLens=0.2 )
+
+    yAnalytical = np.cumsum(yAnalytical)/np.sum(yAnalytical)
+        
+    ax1.plot(xAnalytical, 1.-yAnalytical,':', \
+                     color='black', label='Analytical')
+                     
+    for iColor, iResolution in enumerate(resolutions):
+        jsonFileName = "../output/SISexample/SIS_example_z0.2_250_5.0_"+str(iResolution)+".json"
+        if not os.path.isfile(jsonFileName):
+            print(jsonFileName)
+            continue
+
+        newFileName = jsonFileName+'.clean.pkl'
+        if not os.path.isfile(newFileName):
+            cleanMultipleImages(jsonFileName)
+
+        data = pkl.load(open(newFileName,'rb'))
+        if type(data) == list:
+            data = data[0]
+
+
+        xc, y, yError = getHistogram( data, biasWeight=False, \
+                                          weight=True, \
+                                    bins=np.linspace(-1,3,150) )
+        xc -= np.log(0.94)
+
+        xAnalytical, yAnalytical = \
+          getAnalyticExpression( xc, 250., zSource=5., \
+                                zLens=0.2 )
+
+        yAnalytical = np.cumsum(yAnalytical)/np.sum(yAnalytical)
+        
+        y = np.cumsum(y)/np.sum(y)
+        yError =  np.sqrt(np.cumsum(yError**2)/(np.arange(len(yError))+1))
+        
+        #yError = np.sqrt(np.cumsum(yError**2))
+        ax1.errorbar( xc , 1.-y, yerr=yError,fmt='.', \
+                color=color[iColor], label=str(1./iResolution/10.)+' kpc')
+        
+
+
+        ax2.errorbar( xc, y-yAnalytical,  \
+                          fmt='-', color=color[iColor])
+
+    #ax1.plot(0,0,':',label='Analytical')
+    ax1.legend(title='Source Plane Pixel Size')
+    ax1.set_xticklabels([])
+    box = dict(color='white')
+    ax1.set_xlabel(r'$log(\Delta t)$', bbox=box)
+    ax1.set_ylabel(r'P(>$log(\Delta t)$)', bbox=box)
+    ax2.set_ylabel(r'$\Delta P>log(\Delta t)$)', bbox=box)
+    
+    fig.align_ylabels([ax1,ax2])
+    
+    ax2.set_ylim(-0.05,0.05)
+    #ax1.set_yscale('log')
+    ax1.set_xlim(0.25,1.85)
+    ax1.set_ylim(0.0,1.)
+
+    ax2.set_xlim(0.25,1.85)
+    ax2.plot([0., 2.2], [0.,0.], '--')
+    ax2.set_xlabel(r'log($\Delta t$/ days)', labelpad=-1)
+
+    
+    plt.savefig('../plots/SISresolution.pdf')
+    plt.show()
+
+    
+    
+def getAnalyticExpression( logTimeDelay, velocityDispersion, zSource=1., zLens=0.2,kernelSize = 3. ):
     cosmo = {'omega_M_0' : 0.3, 'omega_lambda_0' : 0.7, 'h' : 1.}
     cosmo = dist.set_omega_k_0(cosmo)
     Dl = dist.angular_diameter_distance(zLens, **cosmo)
@@ -112,7 +197,7 @@ def getAnalyticExpression( logTimeDelay, velocityDispersion, zSource=1., zLens=0
     
 
     timeDelayOnePixel = dy / 10**maxTimeDelay
-    kernelSize = 3. #timeDelayOnePixel/dX
+     #timeDelayOnePixel/dX
 
 
     #pdb.set_trace()
@@ -154,6 +239,6 @@ def getTimeDelayDistance(zLens, zSource, HubbleConstant, omegaLambda=1.0):
 
     
 if __name__ == '__main__':
+    testSourcePlaneConvergence()
     main()
 
-0.0358846407

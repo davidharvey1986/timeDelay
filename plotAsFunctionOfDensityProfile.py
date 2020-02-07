@@ -5,7 +5,7 @@ from matplotlib import colors as colors
 import matplotlib.cm as cmx
 from matplotlib import rc
 from powerLawFit import *
-
+import generateDifferentSelectionFunctions as selectFunct
 def main( ):
     '''
     Loop through each halo and get the density profile 
@@ -34,9 +34,10 @@ def main( ):
     RMS = []
     zLens = []
     for iHalo in allFiles:
-        pdf = combineJsonFiles([iHalo], newHubbleParameter=70.)
+        #pdf = combineJsonFiles([iHalo], newHubbleParameter=70.)
  
- 
+        pdf = selectFunct.selectionFunction( [iHalo], newHubbleParameter=70., useLsst=True )
+                           
         zLens.append( np.float(iHalo.split('/')[3].split('_')[1]))
         nHalosInField =substructure( iHalo ) 
         nHalos.append(nHalosInField)
@@ -95,7 +96,7 @@ def main( ):
 
 
     zLens = np.array(zLens)
-    color = ['blue','red','green','cyan','yellow']
+    color = ['blue','red','green','cyan','orange']
     for i, iz in enumerate(np.unique(zLens)):
 
         ax.errorbar(powerLaw[(nHalos == 1) & (zLens==iz)], \

@@ -12,7 +12,7 @@ import pickle as pkl
 from matplotlib import pyplot as plt
 #from analyseSISexample import *
 from powerLawFit import *
-from magnificationBias import magnificationBias
+from magnificationBias import *
 import cosmolopy.distance as dist
 import glob 
 def main(fname, bias=False, **kwargs):
@@ -20,11 +20,10 @@ def main(fname, bias=False, **kwargs):
     Plot the images as a function of distance from the centre
     '''
 
-    data = pkl.load(open(fname,'rb'))[0]
+    data = pkl.load(open(fname,'rb'))
 
     xc, y, yError = getHistogram( data, biasWeight=bias )
 
-    powerLawFitIndex = y>0 #(xc>1.2) &  (xc<2.4) & (y>0) & (xc < xc[np.argmax(y)])
     yError /= np.max(y[powerLawFitIndex])
 
     y /= np.max(y[powerLawFitIndex])
@@ -233,14 +232,11 @@ def getTimeDelayDistance(zLens, zSource, HubbleConstant, omegaLambda=1.0):
 
 def sisExample():
     #NEEDS TO BE DONE
-    fname = '../output/SISexample/SIS_example_z0.2_400_4.SISexample.json'
+    #fname = '../output/SISexample/SIS_example_z0.2_400_4.SISexample.json'
     #cleanMultipleImages(fname)
-    main(fname+".clean.pkl",
-        label=r"Source Plane Resolution: 0.2kpc  ($\beta $ = ",\
-        color='green')
-    main(fname+".clean.pkl",
-        label=r"Source Plane Resolution: 0.2kpc  ($\beta $ = ",\
-        color='cyan', bias=True)
+    #main(fname+".clean.pkl",
+    #    label=r"Source Plane Resolution: 0.2kpc  ($\beta $ = ",\
+    #    color='green')
         
     #NEEDS TO BE DONE
     #fname = '../output/NFWexample/NFW_example_z0.2_14.00_4.json'
@@ -254,14 +250,14 @@ def sisExample():
 
     #NEEDS TO BE DONE
     fname = '../output/SISexample/SIS_example_z0.2_405.SISexample.json'
-    cleanMultipleImages(fname)
+    #cleanMultipleImages(fname)
     main(fname+".clean.pkl",\
          label=r"Source Plane Resolution: 1kpc  ($\beta $ = ",\
           color='red')
 
         
     fname = '../output/SISexample/SIS_example_z0.2_400_0.25.SISexample.json'
-    cleanMultipleImages(fname)
+    #cleanMultipleImages(fname)
     main(fname+".clean.pkl", \
         label=r"Source Plane Resolution: 4kpc  ($\beta $ = ", \
         color='orange')
@@ -272,4 +268,4 @@ def sisExample():
 
     
 if __name__ == '__main__':
-    cleanAllFiles()
+    sisExample()

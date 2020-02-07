@@ -52,7 +52,7 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     #prob = 1./np.sum((cumsumYtheory - yTrue)**2)
     
     #if (prob > maxProb):
-    #    pdb.set_trace()
+    pdb.set_trace()
     
     if np.isnan(prob):
         pdb.set_trace()
@@ -89,8 +89,8 @@ class fitHubbleParameterClass:
         chain_len=1000
         pos0 = np.random.rand(nwalkers,ndim)
         pos0[:,0] = np.random.rand( nwalkers) * 0.05 + 0.7
-        pos0[:,1] =  np.random.randn( nwalkers) * 0.1 + 0.3
-        pos0[:,2] =  np.random.randn( nwalkers) * 0.1 - 1.9
+        pos0[:,1] =  np.random.randn( nwalkers) * 0.1 + 0.4
+        pos0[:,2] =  np.random.randn( nwalkers) * 0.1 - 1.75
         
         args = (self.pdf['x'], self.pdf['y'], \
                     self.pdf['error'], self.hubbleInterpolator )

@@ -19,10 +19,9 @@ class hubbleInterpolator:
     planes
     '''
 
-    def __init__( self, nPrincipalComponents=6, selectionFunctionZmed=2.0):
+    def __init__( self, nPrincipalComponents=6):
         
         self.nPrincipalComponents = nPrincipalComponents
-        self.SFzMed = selectionFunctionZmed
         
     def getTrainingData( self, pklFile = 'exactPDFpickles/trainingData.pkl' ):
         '''

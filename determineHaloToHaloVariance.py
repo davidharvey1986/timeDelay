@@ -6,6 +6,7 @@ def main():
     Create a plot of the integrated probability distribution over all redshift and lenses
     for different hubble parameters
     '''
+    #fig = plt.figure(figsize=(5,5))
 
 
     #gs = gridspec.GridSpec(10,1)
@@ -24,10 +25,12 @@ def main():
     betaError = []
 
     for iColor, iHalo in enumerate(haloNames):
-        pklFileName = '../output/CDM/combinedPDF_'+iHalo+'.pkl'
+        pklFileName = '../output/CDM/selectionFunction/SF_%s_70_lsst.pkl' % iHalo
     
         finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
-
+        for i in finalMergedPDFdict.keys():
+            if 'y' in i:
+                finalMergedPDFdict[i] =  1. - np.cumsum(finalMergedPDFdict[i])/np.sum(finalMergedPDFdict[i])
         #finalMergedPDFdict['y'] /= np.max(finalMergedPDFdict['y'])
         #finalMergedPDFdict['yError'] /= np.max(finalMergedPDFdict['y'])
         #finalMergedPDFdict['yLensPlane'] /= np.max(finalMergedPDFdict['yLensPlane'])
@@ -46,16 +49,7 @@ def main():
                         color=colors[iColor])              
        
 
-        #####FIT POWER LAW TO THE DISTRIBUTION##############
-        powerLawFitClass = powerLawFit( finalMergedPDFdict, yMin=1e-2, curveFit=True )
-
-    
-
-        beta.append(powerLawFitClass.params['params'][1])
-        betaError.append( powerLawFitClass.params['error'][1])
-        
-                        
-        #########  #########  #########  #########  #########
+      
 
         #axisB.errorbar( iColor+0.9, powerLawFitClass.params['params'][1], \
         #                    yerr=powerLawFitClass.params['error'][1], \
@@ -74,7 +68,7 @@ def main():
     #axisA.set_yscale('log')
  
     axisA.set_xlabel(r'log($\Delta T$/ days)', labelpad=-1)
-    axisA.set_ylabel(r'P(log($\Delta T$/ days))')
+    axisA.set_ylabel(r'P(>log($\Delta T$/ days))')
     axisA.set_xlim(-1.,3.)
     #axisB.set_xlabel('Halo Name')
     #axisB.set_ylabel(r'$\beta$')
