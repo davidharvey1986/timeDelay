@@ -166,6 +166,18 @@ def getDensityProfile( jsonFileName, rGrid=None, nRadialBins=10):
 
     return np.log10(radialBinCenters), np.log10(density)
 
+def getTotalMass( jsonFileName, rGrid=None):
+    dataDir = '/Users/DavidHarvey/Documents/Work/WDM/data/withProjections/'
+    
+    haloName = jsonFileName.split('/')[-1].split('_')[0]
+    projection = jsonFileName.split('/')[-1].split('_')[3]
+    redshift = jsonFileName.split('/')[-2]
+    fitsFileName = 'cluster_0_'+projection+'_total_sph.fits'
+    dataFileName = \
+      dataDir+haloName+'_EAGLE_CDM/'+redshift+'/HIRES_MAPS/'+fitsFileName
+    dPix = 0.1e-3
+    data = fits.open(dataFileName)[0].data*dPix*dPix
+    return np.log10(np.sum( data[ rGrid < 100]))
 
 def substructure( jsonFileName, minLogMass = 7 ):
     '''

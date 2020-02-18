@@ -42,7 +42,8 @@ class hubbleInterpolator:
         self.timeDelayDistClasses = []
 
         features = np.array([], dtype=[('hubbleParameter', float), \
-                        ('zLens',float), ('densityProfile', float)])
+                        ('zLens',float), ('densityProfile', float),\
+                        ('totalMass', float)])
         
         self.nFeatures = len(features.dtype)
 
@@ -78,9 +79,14 @@ class hubbleInterpolator:
                     self.pdfArray = \
                       np.vstack((self.pdfArray, finalMergedPDFdict['y']))
 
-                densityProfile = getDensity.getDensityProfileIndex(iFile, rGrid=rGrid)[0]
+                densityProfile = \
+                  getDensity.getDensityProfileIndex(iFile, rGrid=rGrid)[0]
+                totalMass = \
+                  getDensity.getTotalMass(iFile, rGrid=rGrid)
                 
-                iFeature = np.array( [(iHubbleParameter, zLens, densityProfile )], \
+                iFeature = \
+                  np.array( [(iHubbleParameter, zLens, \
+                            densityProfile, totalMass )], \
                     dtype = features.dtype)
 
                 

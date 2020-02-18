@@ -35,7 +35,7 @@ def main():
         xc, y, yError = getHistogram( data, biasWeight=False, \
                                           weight=True, \
                                     bins=np.linspace(-1,3,150) )
-        xc -= np.log(0.94)
+        xc += np.log(1.74)
         y = np.cumsum(y)/np.sum(y)
         yError =  np.sqrt(np.cumsum(yError**2)/(np.arange(len(yError))+1))
         #y = 1. - np.cumsum(y*(xc[1] - xc[0]))
@@ -68,10 +68,10 @@ def main():
     
     ax2.set_ylim(-0.05,0.05)
     #ax1.set_yscale('log')
-    ax1.set_xlim(0.25,1.85)
+    ax1.set_xlim(0.5,2.5)
     ax1.set_ylim(0.0,1.)
 
-    ax2.set_xlim(0.25,1.85)
+    ax2.set_xlim(0.5,2.5)
     ax2.plot([0., 2.2], [0.,0.], '--')
     ax2.set_xlabel(r'log($\Delta t$/ days)', labelpad=-1)
 
@@ -120,7 +120,7 @@ def testSourcePlaneConvergence():
         xc, y, yError = getHistogram( data, biasWeight=False, \
                                           weight=True, \
                                     bins=np.linspace(-1,3,150) )
-        xc -= np.log(0.94)
+        xc += np.log(1.74)
 
         xAnalytical, yAnalytical = \
           getAnalyticExpression( xc, 250., zSource=5., \
@@ -152,10 +152,10 @@ def testSourcePlaneConvergence():
     
     ax2.set_ylim(-0.05,0.05)
     #ax1.set_yscale('log')
-    ax1.set_xlim(0.25,1.85)
+    ax1.set_xlim(0.5,2.5)
     ax1.set_ylim(0.0,1.)
 
-    ax2.set_xlim(0.25,1.85)
+    ax2.set_xlim(0.5,2.5)
     ax2.plot([0., 2.2], [0.,0.], '--')
     ax2.set_xlabel(r'log($\Delta t$/ days)', labelpad=-1)
 
@@ -181,7 +181,7 @@ def getAnalyticExpression( logTimeDelay, velocityDispersion, zSource=1., zLens=0
     
     analytic = 8.*np.pi*(velocityDispersion/cInKmPerSecond)**2*timeDelayDistance*Dls/Ds*angle*seconds2days
     
-    maxTimeDelay = np.log10(32.*np.pi*(velocityDispersion/cInKmPerSecond)**4*Dl*Dls/Ds*(1.+zLens)/cInMpcPerSecond*seconds2days)
+    maxTimeDelay = np.log10(32.*np.pi**2*(velocityDispersion/cInKmPerSecond)**4*Dl*Dls/Ds*(1.+zLens)/cInMpcPerSecond*seconds2days)
 
     #logTimeDelay = np.linspace(-3,maxTimeDelay,100)
     probability =  (10**logTimeDelay)**2 

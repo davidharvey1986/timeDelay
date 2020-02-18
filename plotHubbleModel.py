@@ -11,23 +11,27 @@ def main(nBins=6):
     powerLawIndex = np.linspace(-2,-1.,nBins)
     redshift = np.linspace(0.22,1.02,nBins) 
     hubbleParam = np.linspace(.5,1.,nBins)
+    totalMass = np.linspace(11.,11.6,nBins)
+
     interpolateToTheseTimes=   np.linspace(0, 3, 1000)
     hubbleInterpolaterClass = hubbleInterpolator()
-    hubbleInterpolaterClass.getTrainingData(pklFile='picklesMinimumDelay/trainingData.pkl')
+    pklFile = 'stellarMassPickles/trainingData.pkl'
+    hubbleInterpolaterClass.getTrainingData(pklFile=pklFile)
     hubbleInterpolaterClass.extractPrincipalComponents()
-
+    
+    print(np.min(hubbleInterpolaterClass.features['totalMass']),\
+              np.max(hubbleInterpolaterClass.features['totalMass']))
     #for i in 10**np.linspace(-4,4, 10):
      #   hubbleInterpolaterClass.learnPrincipalComponents(weight=i)
     hubbleInterpolaterClass.learnPrincipalComponents()
-    for i, iPL in enumerate(powerLawIndex):
-        print(i)
-        for j, iRedshift in enumerate(redshift):
-            for k, iHubble in enumerate(hubbleParam):
-                interpolatedProb = \
-                  hubbleInterpolaterClass.predictPDF( interpolateToTheseTimes, \
-                                                np.array([iHubble,iRedshift, iPL] ))
+  
+    for i, iMass in enumerate(totalMass):
+        interpolatedProb = \
+          hubbleInterpolaterClass.predictPDF( interpolateToTheseTimes, \
+                        np.array([0.7,0.4, -1.75, iMass] ))
 
-                plt.plot(interpolateToTheseTimes, interpolatedProb)
+        plt.plot(interpolateToTheseTimes, interpolatedProb, label=str(iMass))
+    plt.legend()
     plt.show()
 
 
@@ -187,6 +191,6 @@ def getBestFitParameter( samples ):
 
         
 if __name__ == '__main__':
-    #main()
+    main()
     #plotPCAanalysis()
-    plotFinalHubbleModel()
+    #plotFinalHubbleModel()
