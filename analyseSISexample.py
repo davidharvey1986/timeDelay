@@ -62,7 +62,7 @@ def main():
     box = dict(color='white')
     ax1.set_xlabel(r'$log(\Delta t)$', bbox=box)
     ax1.set_ylabel(r'P(>$log(\Delta t)$)', bbox=box)
-    ax2.set_ylabel(r'$\Delta P>log(\Delta t)$)', bbox=box)
+    ax2.set_ylabel(r'$\Delta P(>log(\Delta t)$)', bbox=box)
     
     fig.align_ylabels([ax1,ax2])
     
@@ -146,7 +146,7 @@ def testSourcePlaneConvergence():
     box = dict(color='white')
     ax1.set_xlabel(r'$log(\Delta t)$', bbox=box)
     ax1.set_ylabel(r'P(>$log(\Delta t)$)', bbox=box)
-    ax2.set_ylabel(r'$\Delta P>log(\Delta t)$)', bbox=box)
+    ax2.set_ylabel(r'$\Delta P(>log(\Delta t)$)', bbox=box)
     
     fig.align_ylabels([ax1,ax2])
     

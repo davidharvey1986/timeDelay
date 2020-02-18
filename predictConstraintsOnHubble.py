@@ -21,7 +21,7 @@ from scipy.ndimage import gaussian_filter as gauss
 
     
 def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
-                        trueHubble=False):
+                        trueHubble=True):
 
     labels = \
       [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$']
@@ -29,8 +29,8 @@ def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
     figcorner, axarr = plt.subplots(ndim,ndim,figsize=(12,12))
     color = ['blue','red','green','cyan']
     
-    for icolor, sampleSize in enumerate([7943]):
-        samples = getMCMCchainForSamplesSize(sampleSize, 10, 70., None,  minimumTimeDelay=10. )#trueHubble=trueHubble)
+    for icolor, sampleSize in enumerate([100, 1000, 10000]):
+        samples = getMCMCchainForSamplesSize(sampleSize, 10, 70., None, trueHubble=trueHubble)
         
         if (not trueHubble):
             truths  = [0.7, 0.4, -1.75]
@@ -51,13 +51,15 @@ def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
                           levels=(0.68,), labelsize=15,\
                           truth_color='black')
 
+        
     if  trueHubble:
-        axarr[1,1].set_xlim( 0.3, 0.5)
+        reportParameters(samples)
+        axarr[1,1].set_xlim( 0.4, 0.6)
         axarr[2,2].set_xlim( -1.9, -1.6)
-        axarr[1,0].set_ylim( 0.3, 0.5)
+        axarr[1,0].set_ylim( 0.4, 0.6)
         axarr[2,0].set_ylim( -1.9, -1.6)
         axarr[2,1].set_ylim( -1.9, -1.6)
-        axarr[2,1].set_xlim( 0.3, 0.5)
+        axarr[2,1].set_xlim( 0.4, 0.6)
 
     else:
         axarr[1,1].set_xlim( 0.3, 0.58)
@@ -87,26 +89,36 @@ def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
     
     
 def nonPerfectFittingFunction(nComponents=5):
+    fig = plt.figure(figsize=(10,6))
 
     inputHubbleParameter = 70.
-      
-    sampleSizes, estimates = \
-      getPredictedConstraints(inputHubbleParameter, minimumTimeDelay=10.)
-    estimates /=inputHubbleParameter/100.
-
-    fig = plt.figure(figsize=(10,6))
-    plt.plot( sampleSizes, estimates,\
-                  label="Ensemble samples")
-    
+    #####
     #sampleSizes, estimates = \
-    #  getPredictedConstraints(inputHubbleParameter,trueHubble=False)
-      
-    #plt.plot( sampleSizes, estimates/inputHubbleParameter*100., \
-    #            label='Exact CDF')
-    plt.plot( sampleSizes, np.ones(len(sampleSizes))+1, '--', label='Current systematic limit')
-    plt.plot( [3162,3162], [0,10], 'k--', label='Expected from LSST')
+    #  getPredictedConstraints(inputHubbleParameter)
+    #estimates /=inputHubbleParameter/100.
+    #plt.plot( sampleSizes, estimates,\
+    #              label="Exact PDF")
+
+    #####
     
-    constraints = estimates[ np.argmin(np.abs(sampleSizes-3000))]
+
+    sampleSizes, estimates = \
+      getPredictedConstraints(inputHubbleParameter, trueHubble=True)
+    estimates /=inputHubbleParameter/100.
+    plt.plot( sampleSizes, estimates,\
+                  label=r'$\Delta t = 0$ days')
+    constraints = np.interp( 3000, sampleSizes, estimates)
+
+    ########
+    sampleSizes, estimates = \
+      getPredictedConstraints(inputHubbleParameter, minimumTimeDelay=10)
+      
+    plt.plot( sampleSizes, estimates/inputHubbleParameter*100., \
+                label=r'$\Delta t = 10$ days')
+    #######
+    plt.plot( sampleSizes, np.ones(len(sampleSizes))+1, '--', label='Current systematic limit')
+    plt.plot( [3000,3000], [0,10], 'k--', label='Expected from LSST')
+    
     plt.plot( sampleSizes, np.zeros(len(sampleSizes))+constraints, 'k--')
 
     #plt.yscale('log')
@@ -121,7 +133,7 @@ def nonPerfectFittingFunction(nComponents=5):
     plt.show()
 
 def getPredictedConstraints(inputHubbleParameter, \
-                                nIterations = 30,\
+                                nIterations = 70,\
                                 nSampleSizes = 11,\
                                 exactIndex=False,\
                                 trueHubble=False,\
@@ -144,7 +156,7 @@ def getPredictedConstraints(inputHubbleParameter, \
     estimates = np.zeros(nSampleSizes)
     
     #Loop through each sample size
-    for i, iSampleSize in enumerate(sampleSizes[8:]):
+    for i, iSampleSize in enumerate(sampleSizes):
         print("Sample Size: %i" % (iSampleSize))
         
         samples = \
@@ -279,7 +291,8 @@ def selectRandomSampleOfTimeDelays( nSamples, hubbleParameter, \
     dX = (x[1] - x[0])
     xcentres = (x[1:] + x[:-1])/2.
     if trueHubble:
-        xcentres += 2.5*dX
+        xcentres += 1.3*dX
+        
     error = np.sqrt(y*nSamples)/nSamples
 
     cumsumY = np.cumsum( y )  / np.sum(y)
@@ -317,6 +330,8 @@ def getModeAndError( samples ):
 
         #error = np.sqrt(np.sum( y*(xc-maxLike)**2*dX ))
         #print(error)
+        
+        
     error = np.sqrt(np.sum((np.array(maxLike)-0.7)**2)/len(maxLike))
    
 
@@ -333,9 +348,12 @@ def undoCumSum(cumulative):
 
     return np.array(output)
 
-
+def reportParameters( samples ):
+    for i in range(samples.shape[1]):
+        print("Assuming Gaussian Posterior: ", norm.fit(samples[:,i]))
+        
 if __name__ == '__main__':
-    #plotCornerPlot()
-    #plotDifferentHalos()
-    nonPerfectFittingFunction()
+    plotCornerPlot()
+    
+    #nonPerfectFittingFunction()
 #

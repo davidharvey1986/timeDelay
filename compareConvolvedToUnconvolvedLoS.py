@@ -75,7 +75,16 @@ def compareConvolvedToUnconvolvedLoS(hubbleParameter=70.):
 
     axisB.plot(finalMergedPDFdict['x'], ratio, color='green')
 
+    
+    axisA.plot( finalMergedPDFdict['x'], yCumSum, \
+                color='cyan', label='Mag Bias' )
 
+
+    ratio = yCumSum-finalMergedPDFdict['yLensPlane']
+
+    axisB.plot(finalMergedPDFdict['x'], ratio, color='green')
+
+    
 
        
     axisB.plot([-1,3.],[0,0],'r-')

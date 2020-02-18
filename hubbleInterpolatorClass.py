@@ -102,6 +102,7 @@ class hubbleInterpolator:
         self.pca = PCA(n_components=self.nPrincipalComponents)
         self.pca.fit( self.pdfArray )
         self.principalComponents = self.pca.transform( self.pdfArray )
+
             
     def learnPrincipalComponents( self, weight=1. ):
         '''

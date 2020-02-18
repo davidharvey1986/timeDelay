@@ -48,9 +48,10 @@ def plotPCAanalysis(nComponents=7):
     
     for iNumPrincipalComponents in principalComponents:
         print(iNumPrincipalComponents)
+
         hubbleInterpolaterClass = \
           hubbleInterpolator(nPrincipalComponents=np.int(iNumPrincipalComponents))
-        hubbleInterpolaterClass.getTrainingData(pklFile='picklesMinimumDelay/trainingData.pkl')
+        hubbleInterpolaterClass.getTrainingData(pklFile='exactPDFpickles/trainingData.pkl')
         hubbleInterpolaterClass.extractPrincipalComponents()
         hubbleInterpolaterClass.learnPrincipalComponents()
         AICc.append(hubbleInterpolaterClass.getGaussProcessLogLike())
@@ -97,25 +98,30 @@ def plotPCAanalysis(nComponents=7):
                 
         axarr[1,0].plot( timeDelays, np.mean( diffPredict, axis=0), \
                 color=scalarMap.to_rgba(iNumPrincipalComponents))
-                
-        axarr[0,1].plot( timeDelays, np.mean( diffPCA, axis=0)*100,\
+
+        meanDiff = np.abs(np.mean( diffPCA, axis=0))*10000
+        
+        axarr[0,1].plot( timeDelays[:-1], meanDiff[:-1],\
                 label='%i PCs' % iNumPrincipalComponents,\
                     color=scalarMap.to_rgba(iNumPrincipalComponents))
-        axarr[1,1].plot( timeDelays, np.mean( diffPredict, axis=0)*100, \
+        meanDiffPred = np.abs(np.mean( diffPredict, axis=0))*10000
+
+        axarr[1,1].plot( timeDelays[:-1], meanDiffPred[:-1], \
                 label='%i PCs' % iNumPrincipalComponents,\
                 color=scalarMap.to_rgba(iNumPrincipalComponents))
 
-    axarr[0,1].legend()
+    axarr[0,1].legend(bbox_to_anchor=(1.25, 1.))
     axarr[0,0].set_xticklabels([])
     axarr[0,1].set_xticklabels([])
 
     axarr[0,0].set_ylabel(r'CDF$_T$ - CDF$_{PCA}$', bbox=box)
-    axarr[0,1].set_ylabel(r'$\langle\Delta$CDF$\rangle$ / $10^{-2}$', bbox=box)
+    axarr[0,1].set_ylabel(r'|$\langle\Delta$CDF$\rangle$| / $10^{-4}$', bbox=box)
     axarr[1,0].set_ylabel(r'CDF$_T$ - CDF$_{\bar{T}}$', bbox=box)
-    axarr[1,1].set_ylabel(r'$\langle\Delta$CDF$\rangle$ / $10^{-2}$', bbox=box)
+    axarr[1,1].set_ylabel(r'$\langle\Delta$CDF$\rangle$ / $10^{-4}$', bbox=box)
     axarr[1,1].set_xlabel(r'log($\Delta t$/ days)')
     axarr[1,0].set_xlabel(r'log($\Delta t$/ days)')
-
+    axarr[0,1].set_yscale('log')
+    axarr[1,1].set_yscale('log')
     fig.align_ylabels(axarr)
     plt.savefig('../plots/pcaAnalysis.pdf')
     plt.show()
@@ -161,11 +167,11 @@ def plotFinalHubbleModel( sampleSize=10000,hubbleParameter=70):
                                                 bestFitParams)
 
 
-    predictPDF /= np.sum(predictPDF*dX)
+    #predictPDF /= np.sum(predictPDF*dX)
     finalMergedPDFdict['y'] /= np.sum(finalMergedPDFdict['y']*dX)
-    plt.plot( finalMergedPDFdict['x'] + 2.5*dXtime,\
-                  finalMergedPDFdict['y'])
-    plt.plot( finalMergedPDFdict['x'],predictPDF)
+    plt.plot( finalMergedPDFdict['x'] + 1.8*dXtime,\
+                  1-np.cumsum(finalMergedPDFdict['y'])/np.sum(finalMergedPDFdict['y']))
+    plt.plot( finalMergedPDFdict['x'],1.-predictPDF)
     plt.show()
 
 def getBestFitParameter( samples ):
@@ -182,5 +188,5 @@ def getBestFitParameter( samples ):
         
 if __name__ == '__main__':
     #main()
-    plotPCAanalysis()
-    #plotFinalHubbleModel()
+    #plotPCAanalysis()
+    plotFinalHubbleModel()

@@ -99,25 +99,21 @@ def main( ):
     color = ['blue','red','green','cyan','orange']
     for i, iz in enumerate(np.unique(zLens)):
 
-        ax.errorbar(powerLaw[(nHalos == 1) & (zLens==iz)], \
-            beta[(nHalos == 1) & (zLens==iz)], \
-            xerr=powerLawError[(nHalos == 1) & (zLens==iz)],\
-            yerr=betaError[(nHalos == 1) & (zLens==iz)], \
-            fmt='o', color=color[i], alpha=alpha, label='z='+str(iz))
-                          
-        ax.errorbar(powerLaw[(nHalos > 1)  & (zLens==iz)], \
-            beta[(nHalos > 1)  & (zLens==iz)],\
-            xerr=powerLawError[(nHalos > 1)  & (zLens==iz)], \
-            yerr=betaError[(nHalos > 1)  & (zLens==iz)], \
-            fmt='^', alpha=alpha, color=color[i])
+        ax.errorbar(powerLaw[ (zLens==iz)], \
+            beta[(zLens==iz)], \
+            xerr=powerLawError[ (zLens==iz)],\
+            yerr=betaError[(zLens==iz)], \
+            fmt='o', color=color[i], \
+            alpha=alpha, label='z='+str(iz))
 
-    
-    ax.errorbar(0,0,0,0,fmt='o',label='No Substructure', color='black')
-    ax.errorbar(0,0,0,0,fmt='^',label='Substructure', color='black')
+
+    ax.plot(np.linspace(-2.1,-1.6), np.linspace(-2.1,-1.6)*-1, 'k--', label=r'Eqn (10)')
+    #ax.errorbar(0,0,0,0,fmt='o',label='No Substructure', color='black')
+    #ax.errorbar(0,0,0,0,fmt='^',label='Substructure', color='black')
     ax.legend()
 
-    getAndPlotTrend(powerLaw[nHalos == 1], beta[nHalos == 1], ax, '-', color='blue')
-    getAndPlotTrend(powerLaw[nHalos > 1], beta[nHalos > 1], ax, '-', color='red')
+    getAndPlotTrend(powerLaw, beta, ax, '-', color='blue')
+    #getAndPlotTrend(powerLaw[nHalos > 1], beta[nHalos > 1], ax, '-', color='red')
     ax.set_xlim(-2.1,-1.6)
     #popt, pcov = curve_fit(func, powerLaw[nHalos == 1], beta[nHalos == 1])
     #ax.plot( powerLaw, func( powerLaw, *popt), color='blue')
@@ -171,7 +167,7 @@ def getDensityProfile( jsonFileName, rGrid=None, nRadialBins=10):
     return np.log10(radialBinCenters), np.log10(density)
 
 
-def substructure( jsonFileName ):
+def substructure( jsonFileName, minLogMass = 7 ):
     '''
     see if there is a halo in the projcted distance
     '''
