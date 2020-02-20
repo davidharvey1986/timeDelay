@@ -129,7 +129,7 @@ def saveAllLensesForMultipleHubbleParameters(rerun=False):
     allFiles = glob.glob(dirD+'/CDM/z*/B**cluster_0_*_total_*.json')
 
 
-    hubbleParameters = [80.] #[100., 50., 60., 70., 80., 90.]
+    hubbleParameters = [100.] #[100., 50., 60., 70., 80., 90.]
 
     for iHubbleParameter in hubbleParameters:
         pklFileName = '../output/CDM/combinedPDF_'+str(iHubbleParameter)+'.pkl'

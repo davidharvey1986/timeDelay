@@ -21,16 +21,16 @@ from scipy.ndimage import gaussian_filter as gauss
 
     
 def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
-                        trueHubble=True):
+                        trueHubble=False):
 
     labels = \
       [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$']
     ndim = 3
-    figcorner, axarr = plt.subplots(ndim,ndim,figsize=(12,12))
+    figcorner, axarr = plt.subplots(ndim,ndim,figsize=(8,8))
     color = ['blue','red','green','cyan']
     
     for icolor, sampleSize in enumerate([100, 1000, 10000]):
-        samples = getMCMCchainForSamplesSize(sampleSize, 10, 70., None, trueHubble=trueHubble)
+        samples = getMCMCchainForSamplesSize(sampleSize, 10, 10., None, trueHubble=trueHubble)
         
         if (not trueHubble):
             truths  = [0.7, 0.4, -1.75]
@@ -103,9 +103,9 @@ def nonPerfectFittingFunction(nComponents=5):
     
 
     sampleSizes, estimates = \
-      getPredictedConstraints(inputHubbleParameter, trueHubble=True)
+     getPredictedConstraints(inputHubbleParameter, trueHubble=True)
     estimates /=inputHubbleParameter/100.
-    plt.plot( sampleSizes, estimates,\
+    plt.errorbar( sampleSizes, estimates, \
                   label=r'$\Delta t = 0$ days')
     constraints = np.interp( 3000, sampleSizes, estimates)
 
@@ -113,7 +113,7 @@ def nonPerfectFittingFunction(nComponents=5):
     sampleSizes, estimates = \
       getPredictedConstraints(inputHubbleParameter, minimumTimeDelay=10)
       
-    plt.plot( sampleSizes, estimates/inputHubbleParameter*100., \
+    plt.errorbar( sampleSizes, estimates/inputHubbleParameter*100., \
                 label=r'$\Delta t = 10$ days')
     #######
     plt.plot( sampleSizes, np.ones(len(sampleSizes))+1, '--', label='Current systematic limit')
@@ -133,7 +133,7 @@ def nonPerfectFittingFunction(nComponents=5):
     plt.show()
 
 def getPredictedConstraints(inputHubbleParameter, \
-                                nIterations = 70,\
+                                nIterations = 100,\
                                 nSampleSizes = 11,\
                                 exactIndex=False,\
                                 trueHubble=False,\
@@ -154,7 +154,8 @@ def getPredictedConstraints(inputHubbleParameter, \
     sampleSizes = 10**np.linspace(2,4,nSampleSizes)
     
     estimates = np.zeros(nSampleSizes)
-    
+
+
     #Loop through each sample size
     for i, iSampleSize in enumerate(sampleSizes):
         print("Sample Size: %i" % (iSampleSize))
@@ -173,16 +174,16 @@ def getPredictedConstraints(inputHubbleParameter, \
             #estimates[i] = \
             #  norm.fit(samples[truth,0])[1]/np.sqrt(nIterations)*100
 
-            median, upper, lower = \
+            median, error = \
               getModeAndError( samples[truth, 0])
 
         else:
             #estimates[i] = \
             #  norm.fit(samples[:,0])[1]/np.sqrt(nIterations)*100
             
-            median, upper, lower =  getModeAndError( samples[:,0])
+            median, error =  getModeAndError( samples[:,0])
 
-        estimates[i] = upper
+        estimates[i] = error
 
 
     return sampleSizes, estimates
@@ -269,7 +270,7 @@ def selectRandomSampleOfTimeDelays( nSamples, hubbleParameter, \
 
         interpolatedProb = interpolatedProbClass( interpolateToTheseTimes)
     else:
-        theta = np.array([0.7, 0.4, -1.75] )
+        theta = np.array([0.7, 0.6, -1.75] )
         interpolatedCumSum = hubbleInterpolaterClass.predictPDF( interpolateToTheseTimes, theta )
         interpolatedProb = undoCumSum( interpolatedCumSum)
       
@@ -297,17 +298,19 @@ def selectRandomSampleOfTimeDelays( nSamples, hubbleParameter, \
 
     cumsumY = np.cumsum( y )  / np.sum(y)
     cumsumYError = np.sqrt(np.cumsum(error**2)/(np.arange(len(error))+1))
+    cumsumYError = np.ones(len(y))/nSamples/2.
 
     return {'x':xcentres+dX/2., 'y':cumsumY,  'error':cumsumYError}
 
 def getModeAndError( samples ):
 
-    nIterations = np.int(samples.shape[0]/22000)
-
+    nIterations = 100
+    
     print(nIterations)
 
     itPs = np.int(samples.shape[0]/nIterations)
     maxLike = []
+    indivError = []
     for i in range(nIterations):
         iSample = samples[i*itPs:(i+1)*itPs]
         y, x = \
@@ -316,29 +319,21 @@ def getModeAndError( samples ):
                         density=True)
 
         xc = (x[1:]+x[:-1])/2.
-        dX =  x[1] - x[0]
+        #dX =  x[1] - x[0]
         maxLike.append(xc[np.argmax(y)])
-        #maxLike.append(np.percentile( iSample[(iSample>0.6) &(iSample<0.8)], 50))
+        indivError.append( np.std( iSample ))
+  
 
-
-        #yCumSum = np.cumsum(y)*dX
-    
-        #upper = xc[ np.argmin( np.abs(yCumSum[np.argmax(y)] + 0.34 - yCumSum))]
-        #lower = xc[ np.argmin( np.abs(yCumSum[np.argmax(y)] - 0.34 - yCumSum))]
-        #upper = xc[ np.argmin( np.abs( yCumSum -0.84) )]
-        #lower = xc[ np.argmin( np.abs(yCumSum - 0.16) )]
-
-        #error = np.sqrt(np.sum( y*(xc-maxLike)**2*dX ))
-        #print(error)
         
-        
-    error = np.sqrt(np.sum((np.array(maxLike)-0.7)**2)/len(maxLike))
+    #error = np.sqrt(np.sum((np.array(maxLike)-0.7)**2)/len(maxLike))
    
-
+    
     maxLikeMean = np.median(np.array(maxLike))
     
-    error  = np.std(samples[(samples>0.6) & (samples<0.8)])   
-    return maxLikeMean, error*100, error*100
+    error  = np.std(samples[(samples>0.6) & (samples<0.8)])
+    error = np.mean(np.array(indivError))
+    errorOnError = np.std(np.array(indivError)) /np.sqrt(len(indivError))
+    return maxLikeMean, error*100
 
 def undoCumSum(cumulative):
     output = [0] * len(cumulative)
@@ -353,7 +348,7 @@ def reportParameters( samples ):
         print("Assuming Gaussian Posterior: ", norm.fit(samples[:,i]))
         
 if __name__ == '__main__':
-    plotCornerPlot()
+    #plotCornerPlot()
     
-    #nonPerfectFittingFunction()
-#
+    nonPerfectFittingFunction()
+##

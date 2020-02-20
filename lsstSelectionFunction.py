@@ -22,10 +22,10 @@ def main():
     
     plt.show()
     
-def getSelectionFunction( iRedshift):
+def getSelectionFunction( iRedshift, limitingObsMag=27):
 
     luminosityFunctionClass = \
-          luminosityFunction( iRedshift )
+          luminosityFunction( iRedshift, limitingObsMag=limitingObsMag )
 
     nQuasars = \
       np.sum(luminosityFunctionClass.luminosityFunction['y'])*\

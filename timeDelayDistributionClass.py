@@ -239,7 +239,8 @@ class singleSourcePlaneDistribution:
         dX = x[1:] - x[:-1]
 
         #Removing calibartion
-        xc -= np.log(0.94)
+        xc += np.log(1.74)
+
 
         yBiased, xBiased = \
             np.histogram( self.logDoubleTimeDelay, \

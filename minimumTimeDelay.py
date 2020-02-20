@@ -5,7 +5,7 @@ def minimumTimeDelay( sampleSize=10000):
     labels = \
       [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$']
     ndim = 3
-    figcorner, axarr = plt.subplots(ndim,ndim,figsize=(12,12))
+    figcorner, axarr = plt.subplots(ndim,ndim,figsize=(8,8))
     color = ['blue','red','green','cyan']
     minimumTimeDelay = [10., 0.]
     for icolor, iMinimumTimeDelay in enumerate(minimumTimeDelay):

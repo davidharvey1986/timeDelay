@@ -11,6 +11,7 @@ from scipy.optimize import curve_fit
 import emcee
 from scipy.stats import norm
 from scipy.stats import chi2
+from scipy.stats import poisson
 
 import numpy as np
 import os
@@ -28,9 +29,9 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     
     #maxProb = 1./np.sum((maxProbCum - yTrue)**2)
 
-    
+
     cumsumYtheory = hubbleInterpolator.predictPDF( xTrue, theta )
-    
+
 
 
     #if np.any(np.isfinite(yTheory) == False):
@@ -47,6 +48,7 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     
     #cumsumYtheory = np.cumsum( yTheory )/np.sum(yTheory)
 
+    
     prob = np.sum(norm.logpdf( cumsumYtheory[error!=0], yTrue[error!=0], scale=error[error!=0]))
     
     #prob = 1./np.sum((cumsumYtheory - yTrue)**2)
@@ -56,6 +58,8 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     if np.isnan(prob):
         pdb.set_trace()
         return -np.inf
+
+    #prob += norm.logpdf( theta[1], 0.2, scale=0.17 )
     return prob
     
 
@@ -84,11 +88,11 @@ class fitHubbleParameterClass:
         nwalkers = 20
 
         ndim = 3
-        burn_len=100
+        burn_len=500
         chain_len=1000
         pos0 = np.random.rand(nwalkers,ndim)
         pos0[:,0] = np.random.rand( nwalkers) * 0.05 + 0.7
-        pos0[:,1] =  np.random.randn( nwalkers) * 0.1 + 0.4
+        pos0[:,1] =  np.random.randn( nwalkers) * 0.1 + 0.75
         pos0[:,2] =  np.random.randn( nwalkers) * 0.1 - 1.75
         
         args = (self.pdf['x'], self.pdf['y'], \

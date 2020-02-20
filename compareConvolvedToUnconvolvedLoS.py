@@ -96,8 +96,8 @@ def compareConvolvedToUnconvolvedLoS(hubbleParameter=70.):
 
     axisB.set_ylabel(r'$p-p_{\rm int}$')
 
-    axisA.set_xlim(1.,1.7)
-    axisB.set_xlim(1.,1.7)
+    axisA.set_xlim(1.5,2.2)
+    axisB.set_xlim(1.5,2.2)
     #axisA.set_ylim(-0.1,1.1)
     #axisB.set_ylim(-0.02,0.02)
     #axisB.set_yscale('log')

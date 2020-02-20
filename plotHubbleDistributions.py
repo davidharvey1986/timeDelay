@@ -3,6 +3,7 @@ Quickly plot the distributions of time delays from the same simulations
 for two different H0
 
 '''
+import fitDataToModel as fdm
 import json as json
 from matplotlib import pyplot as plt
 import glob
@@ -69,6 +70,8 @@ def main():
 
     axisA.set_xlim(-1,2.75)
     #axisA.set_ylim(1e-2,2.)
+    pdf = fdm.getObservations()
+    axisA.plot(pdf['x'],1.-pdf['y'])
     plt.savefig('../plots/allLensesDifferentHubbleValues.pdf')
     plt.show()
    
