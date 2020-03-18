@@ -130,6 +130,7 @@ def saveAllLensesForMultipleHubbleParameters(rerun=False):
 
 
     hubbleParameters = [100.] #[100., 50., 60., 70., 80., 90.]
+    hubbleParameters = np.linspace(60,80,21)
 
     for iHubbleParameter in hubbleParameters:
         pklFileName = '../output/CDM/combinedPDF_'+str(iHubbleParameter)+'.pkl'

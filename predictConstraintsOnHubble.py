@@ -21,7 +21,7 @@ from scipy.ndimage import gaussian_filter as gauss
 
     
 def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
-                        trueHubble=False):
+                        trueHubble=True):
 
     labels = \
       [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$']
@@ -29,8 +29,8 @@ def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
     figcorner, axarr = plt.subplots(ndim,ndim,figsize=(8,8))
     color = ['blue','red','green','cyan']
     
-    for icolor, sampleSize in enumerate([100, 1000, 10000]):
-        samples = getMCMCchainForSamplesSize(sampleSize, 10, 10., None, trueHubble=trueHubble)
+    for icolor, sampleSize in enumerate([10000]):
+        samples = getMCMCchainForSamplesSize(sampleSize, 10, 100., None, trueHubble=trueHubble)
         
         if (not trueHubble):
             truths  = [0.7, 0.4, -1.75]
@@ -39,8 +39,9 @@ def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
             for i in axarr[:,0]:
                 i.plot([0.7,.7],[-2,10],'k--')
 
-        nsamples = samples.shape[0]                     
-        corner.corner(samples, \
+        nsamples = samples.shape[0]
+                    
+        corner.corner(samples , \
                       bins=100, smooth=True, \
                       plot_datapoints=False,
                       fig=figcorner, \
@@ -48,18 +49,18 @@ def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
                       truths=truths,\
                       weights=np.ones(nsamples)/nsamples,\
                     color=color[icolor],\
-                          levels=(0.68,), labelsize=15,\
+                          levels=(0.68,0.95), labelsize=15,\
                           truth_color='black')
 
         
     if  trueHubble:
         reportParameters(samples)
-        axarr[1,1].set_xlim( 0.4, 0.6)
+        axarr[1,1].set_xlim( 0.45, 0.53)
         axarr[2,2].set_xlim( -1.9, -1.6)
-        axarr[1,0].set_ylim( 0.4, 0.6)
+        axarr[1,0].set_ylim( 0.44, 0.53)
         axarr[2,0].set_ylim( -1.9, -1.6)
         axarr[2,1].set_ylim( -1.9, -1.6)
-        axarr[2,1].set_xlim( 0.4, 0.6)
+        axarr[2,1].set_xlim( 0.44, 0.53)
 
     else:
         axarr[1,1].set_xlim( 0.3, 0.58)
@@ -69,17 +70,17 @@ def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
         axarr[2,1].set_ylim( -1.86, -1.68)
         axarr[2,1].set_xlim( 0.3, 0.58)
             
-    axarr[0,0].set_xlim( 0.6, 0.8)
-    axarr[1,0].set_xlim( 0.6, 0.8)
-    axarr[2,0].set_xlim( 0.6, 0.8)
+    axarr[0,0].set_xlim( 0.65, 0.74)
+    axarr[1,0].set_xlim( 0.65, 0.74)
+    axarr[2,0].set_xlim( 0.65, 0.74)
     
 
-    hundreds = mlines.Line2D([], [], color='blue', label=r'$10^2$ Lenses')
-    thousand = mlines.Line2D([], [], color='red', label='$10^3$ Lenses')
-    tenthous = mlines.Line2D([], [], color='green', label='$10^4$ Lenses')
+    #hundreds = mlines.Line2D([], [], color='blue', label=r'$10^2$ Lenses')
+    #thousand = mlines.Line2D([], [], color='red', label='$10^3$ Lenses')
+    #tenthous = mlines.Line2D([], [], color='green', label='$10^4$ Lenses')
     
-    axarr[0,1].legend(handles=[hundreds,thousand,tenthous], \
-        bbox_to_anchor=(0., 0.25, 1.0, .0), loc=4)
+    ##axarr[0,1].legend(handles=[hundreds,thousand,tenthous], \
+      #  bbox_to_anchor=(0., 0.25, 1.0, .0), loc=4)
     if trueHubble:
         plt.savefig('../plots/degenerciesTrueHubble.pdf')
     else:
@@ -105,26 +106,39 @@ def nonPerfectFittingFunction(nComponents=5):
     sampleSizes, estimates = \
      getPredictedConstraints(inputHubbleParameter, trueHubble=True)
     estimates /=inputHubbleParameter/100.
+
+    
     plt.errorbar( sampleSizes, estimates, \
-                  label=r'$\Delta t = 0$ days')
-    constraints = np.interp( 3000, sampleSizes, estimates)
+                  label=r'$\Delta t_{\rm min} = 0$ days', color='red')
+    constraints3000 = np.interp( 3000, sampleSizes, estimates)
+    constraints400 = np.interp( 400, sampleSizes, estimates)
 
     ########
     sampleSizes, estimates = \
       getPredictedConstraints(inputHubbleParameter, minimumTimeDelay=10)
       
     plt.errorbar( sampleSizes, estimates/inputHubbleParameter*100., \
-                label=r'$\Delta t = 10$ days')
+                label=r'$\Delta t_{\rm min} = 10$ days', color='blue')
     #######
-    plt.plot( sampleSizes, np.ones(len(sampleSizes))+1, '--', label='Current systematic limit')
-    plt.plot( [3000,3000], [0,10], 'k--', label='Expected from LSST')
-    
-    plt.plot( sampleSizes, np.zeros(len(sampleSizes))+constraints, 'k--')
 
+
+
+
+    
+    plt.plot( sampleSizes, np.ones(len(sampleSizes))+1, 'c--', \
+                  label='Current systematic limit')
+
+    
+    plt.plot( [3000,3000], [0,10], 'k--', label='LSST (Optimistic)')
+    plt.plot( sampleSizes, np.zeros(len(sampleSizes))+constraints3000,\
+                  'k--')
+    plt.plot( [400,400], [0,10], 'k:', label='LSST (Conservative)')
+    plt.plot( sampleSizes, np.zeros(len(sampleSizes))+constraints400,\
+                  'k:')
     #plt.yscale('log')
     plt.xscale('log')
     plt.legend()
-    plt.ylim(0., 8)
+    plt.ylim(0., 6)
     plt.xlim(1e2, 1e4)
 
     plt.xlabel('nSamples')
@@ -133,7 +147,7 @@ def nonPerfectFittingFunction(nComponents=5):
     plt.show()
 
 def getPredictedConstraints(inputHubbleParameter, \
-                                nIterations = 100,\
+                                nIterations = 10,\
                                 nSampleSizes = 11,\
                                 exactIndex=False,\
                                 trueHubble=False,\
@@ -166,7 +180,7 @@ def getPredictedConstraints(inputHubbleParameter, \
                                          trueHubble=trueHubble,\
                                          differentHalo=differentHalo,\
                                          minimumTimeDelay=minimumTimeDelay)
-  
+
         if exactIndex:
             truth = \
               (samples[:,1] > 0.19) & (samples[:,1] < 0.21) &\
@@ -222,10 +236,14 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
               fitHubble.fitHubbleParameterClass( selectedTimeDelays, \
                                     hubbleInterpolaterClass)
 
+        y, x = np.histogram(fitHubbleClass.samples[:,0])
+        xc = (x[1:] + x[:-1])/2.
+            
         if samples is None:
             samples = fitHubbleClass.samples
         else:
             samples = np.vstack( (samples, fitHubbleClass.samples))
+
 
 
     pkl.dump(samples, open(pklFile, 'wb'))
@@ -242,7 +260,7 @@ def selectRandomSampleOfTimeDelays( nSamples, hubbleParameter, \
     '''
     
     if minimumTimeDelay == 0:
-        minimumTimeDelay = 1e-1
+        minimumTimeDelay = 1e-3
         
     logMinimumTimeDelay = np.log10(minimumTimeDelay)
     
@@ -257,11 +275,8 @@ def selectRandomSampleOfTimeDelays( nSamples, hubbleParameter, \
       
     finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
 
-    interpolateToTheseTimes=  \
-      np.linspace(np.min(finalMergedPDFdict['x']), \
-            np.max(finalMergedPDFdict['x']),nSamples*100)
         
-    interpolateToTheseTimes= np.linspace(np.log10(minimumTimeDelay), 3, nSamples*100)
+    interpolateToTheseTimes= np.linspace(np.log10(minimumTimeDelay), 3, 1e6)
       
     if trueHubble | ( differentHalo is not None) :
 
@@ -270,7 +285,7 @@ def selectRandomSampleOfTimeDelays( nSamples, hubbleParameter, \
 
         interpolatedProb = interpolatedProbClass( interpolateToTheseTimes)
     else:
-        theta = np.array([0.7, 0.6, -1.75] )
+        theta = np.array([0.7, 0.5, -1.75] )
         interpolatedCumSum = hubbleInterpolaterClass.predictPDF( interpolateToTheseTimes, theta )
         interpolatedProb = undoCumSum( interpolatedCumSum)
       
@@ -285,53 +300,56 @@ def selectRandomSampleOfTimeDelays( nSamples, hubbleParameter, \
       np.random.choice(interpolateToTheseTimes, \
                     p=interpolatedProb, size=np.int(nSamples))
     
-    bins = np.max([10, np.int(nSamples/100)])
+    bins = np.max([20, np.int(nSamples/100)])
     y, x = np.histogram(logTimeDelays, \
-                    bins=np.linspace(logMinimumTimeDelay,3,100), density=True)
+                    bins=np.linspace(-1,3,bins), density=True)
                     
     dX = (x[1] - x[0])
     xcentres = (x[1:] + x[:-1])/2.
     if trueHubble:
-        xcentres += 1.3*dX
+        xcentres += 0.0404
         
     error = np.sqrt(y*nSamples)/nSamples
 
     cumsumY = np.cumsum( y )  / np.sum(y)
     cumsumYError = np.sqrt(np.cumsum(error**2)/(np.arange(len(error))+1))
-    cumsumYError = np.ones(len(y))/nSamples/2.
+    #cumsumYError = np.ones(len(y))/nSamples/2.
+    xcentres+=dX/2.
 
-    return {'x':xcentres+dX/2., 'y':cumsumY,  'error':cumsumYError}
+
+    return {'x':xcentres, 'y':cumsumY,  'error':cumsumYError}
 
 def getModeAndError( samples ):
 
-    nIterations = 100
+    itPs = 10000
+    nIterations = np.int(samples.shape[0] / itPs)
     
-    print(nIterations)
-
-    itPs = np.int(samples.shape[0]/nIterations)
     maxLike = []
     indivError = []
     for i in range(nIterations):
         iSample = samples[i*itPs:(i+1)*itPs]
         y, x = \
-          np.histogram( iSample[(iSample>0.6) &(iSample<0.8)], \
+          np.histogram( iSample[(iSample>0.65) &(iSample<0.8)], \
                             bins=np.linspace(0.5, 1., 50),  \
                         density=True)
-
+        
         xc = (x[1:]+x[:-1])/2.
         #dX =  x[1] - x[0]
         maxLike.append(xc[np.argmax(y)])
-        indivError.append( np.std( iSample ))
-  
+        indivError.append( np.std( iSample[(iSample>0.65) &(iSample<0.8)] ))
 
-        
+
+
     #error = np.sqrt(np.sum((np.array(maxLike)-0.7)**2)/len(maxLike))
-   
-    
+
     maxLikeMean = np.median(np.array(maxLike))
     
-    error  = np.std(samples[(samples>0.6) & (samples<0.8)])
-    error = np.mean(np.array(indivError))
+    #error  = np.std(samples[(samples>0.65) & (samples<0.8)])
+    error = np.nanmedian(np.array(indivError))
+    print(error)
+
+    if np.isfinite(error) == False:
+        pdb.set_trace()
     errorOnError = np.std(np.array(indivError)) /np.sqrt(len(indivError))
     return maxLikeMean, error*100
 

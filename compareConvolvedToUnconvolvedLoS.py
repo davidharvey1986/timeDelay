@@ -50,11 +50,13 @@ def compareConvolvedToUnconvolvedLoS(hubbleParameter=70.):
     
     for i, iMicro in enumerate(microLensing):
         pdfInLinearTimeSmoothed = gauss( pdfInLinearTime, iMicro)
+        
         pdfInLogTimeSmoothed = \
           pdfInLinearTimeSmoothed * ( 10**finalMergedPDFdict['x']*np.log(10.) )
         finalMergedPDFdict['microLensing'] =  pdfInLogTimeSmoothed
-        microLensingCumSum = 1. - np.cumsum(finalMergedPDFdict['microLensing'])/np.sum(finalMergedPDFdict['microLensing'])
-    
+        microLensingCumSum = 1. - np.cumsum(finalMergedPDFdict['microLensing'])/\
+          np.sum(finalMergedPDFdict['microLensing'])
+        
         axisA.plot( finalMergedPDFdict['x'], microLensingCumSum, \
                         label='Microlensing (%i day(s))' % iMicro, color=colors[i])
 
@@ -68,7 +70,8 @@ def compareConvolvedToUnconvolvedLoS(hubbleParameter=70.):
                     color='red', label='Without LoS')
     yCumSum = 1.-np.cumsum(finalMergedPDFdict['y'])/np.sum(finalMergedPDFdict['y'])
     
-    axisA.plot( finalMergedPDFdict['x'], yCumSum, color='green', label='With LoS' )
+    axisA.plot( finalMergedPDFdict['x'], yCumSum, color='green', \
+                    label='With LoS' )
 
 
     ratio = yCumSum-finalMergedPDFdict['yLensPlane']
@@ -76,14 +79,7 @@ def compareConvolvedToUnconvolvedLoS(hubbleParameter=70.):
     axisB.plot(finalMergedPDFdict['x'], ratio, color='green')
 
     
-    axisA.plot( finalMergedPDFdict['x'], yCumSum, \
-                color='cyan', label='Mag Bias' )
-
-
-    ratio = yCumSum-finalMergedPDFdict['yLensPlane']
-
-    axisB.plot(finalMergedPDFdict['x'], ratio, color='green')
-
+   
     
 
        

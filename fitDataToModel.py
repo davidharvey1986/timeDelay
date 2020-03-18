@@ -14,14 +14,14 @@ import lensing_parameters as lensing
 from matplotlib import colors as mcolors
 
 
-def main(pklFile='pickles/fitDataToModel.pkl'):
+def main(pklFile='pickles/fitDataToModelPoisson.pkl'):
         
 
     ndim = 3
     figcorner, axarr = plt.subplots(ndim,ndim,figsize=(8,8))
 
     selectedTimeDelays = getObservations()
-    
+
     hubbleInterpolaterClass = hubbleInterpolator()
     hubbleInterpolaterClass.getTrainingData('pickles/dataTrainingData.pkl')
     hubbleInterpolaterClass.extractPrincipalComponents()
@@ -38,19 +38,19 @@ def main(pklFile='pickles/fitDataToModel.pkl'):
         
         samples = pkl.load(open(pklFile,'rb'))
 
-    parRange = [[0.55,0.8],[0.3,0.75],[-2.,-1.6]]
+    parRange = [[0.55,0.8],[0.45,0.6],[-2.,-1.6]]
     labels = \
       [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$']
 
     nsamples = samples.shape[0]
     #plotMockedData( figcorner)
     
-    corner.corner(samples, range=parRange, levels=[0.68], bins=25,\
+    corner.corner(samples, range=parRange, levels=[0.68], bins=20,\
                     plot_datapoints=False, labels=labels, fig=figcorner,\
                       weights=np.ones(nsamples)/nsamples, color='black', \
                       hist_kwargs={'linewidth':3.},\
-                      contour_kwargs={'linewidths':3.})
-
+                      contour_kwargs={'linewidths':3.}, smooth=True)
+    '''
     axarr[1,1].set_xlim( 0.3, 1.0)
     axarr[2,2].set_xlim( -2, -1.5)
     axarr[1,0].set_ylim( 0.3, 1.0)
@@ -66,10 +66,12 @@ def main(pklFile='pickles/fitDataToModel.pkl'):
     axarr[0,0].set_ylim(0., 0.1)
     axarr[1,1].set_ylim(0., 0.3)
     axarr[2,2].set_ylim(0., 0.3)
+    '''
+    for i in range(samples.shape[1]):
+        lo, med, hi = np.percentile(samples[:,i],[16,50,84])
+        print( med, med-lo, hi-med)
 
-    print(np.mean(samples, axis=0))
-    print(np.std(samples, axis=0))
-
+    pdb.set_trace()
     plt.savefig('../plots/fitDataToModel.pdf')
 
     plt.show()
@@ -78,18 +80,22 @@ def main(pklFile='pickles/fitDataToModel.pkl'):
   
     
 
-def plotMockedData(fig):
+def plotMockedData(fig, nIterations=10):
     colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
     by_hsv = sorted((tuple(mcolors.rgb_to_hsv(mcolors.to_rgba(color)[:3])), name)
                 for name, color in colors.items())
     sorted_names = [name for hsv, name in by_hsv]
 
 
-    pklFile = 'exactPDFpickles/multiFitSamples_10.pkl'
+    pklFile = 'exactPDFpickles/multiFitSamples_30.pkl'
     samples = pkl.load(open(pklFile,'rb'))
     nsamples = samples.shape[0]
-    nSamplePerIt = np.int(nsamples / 10)
-    for i in range(10):
+    nSamplePerIt = np.int(nsamples / nIterations)
+    error = []
+    mean  = []
+    for i in range(nIterations):
+        error.append(np.std(samples[i*nSamplePerIt:(i+1)*nSamplePerIt,0]))
+        mean.append(np.mean(samples[i*nSamplePerIt:(i+1)*nSamplePerIt,0]))
         corner.corner(samples[i*nSamplePerIt:(i+1)*nSamplePerIt,:], levels=(0.68,), smooth=True,\
                           fig=fig, bins=25, density=True,plot_datapoints=False,\
                             weights=np.ones(nSamplePerIt)/nSamplePerIt, \
@@ -101,7 +107,9 @@ def plotMockedData(fig):
                           color='red', \
                       hist_kwargs={'linewidth':2.},\
                       contour_kwargs={'linewidths':2.})
+    pdb.set_trace()
 
+    
 def getObservations(nBins=20):
     data = np.loadtxt( '../data/oguriTimeDelays.txt',\
                            dtype=[('name',object), ('zs', float), \

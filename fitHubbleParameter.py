@@ -31,27 +31,28 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
 
 
     cumsumYtheory = hubbleInterpolator.predictPDF( xTrue, theta )
-
-
+    #cumsumYtheory /= np.max(cumsumYtheory)
+    trueTheta=np.array([0.7,0.4,-1.75])   
+    trueTheory = hubbleInterpolator.predictPDF( xTrue, trueTheta )
 
     #if np.any(np.isfinite(yTheory) == False):
     #    return -np.inf
 
     #if np.any(yTheory < 0):
      #   return -np.inf
-    if (theta[0] < 0.55) | (theta[0] > 0.85):
+    if (theta[0] < 0.65) | (theta[0] > 0.75):
         return -np.inf
     if (theta[1] < 0.) | (theta[1] > 1.0):
         return -np.inf
-    if (theta[2] < -2.1) | (theta[2] > -1.0):
+    if (theta[2] < -2.) | (theta[2] > -1.0):
         return -np.inf
     
     #cumsumYtheory = np.cumsum( yTheory )/np.sum(yTheory)
 
-    
+
     prob = np.sum(norm.logpdf( cumsumYtheory[error!=0], yTrue[error!=0], scale=error[error!=0]))
     
-    #prob = 1./np.sum((cumsumYtheory - yTrue)**2)
+    prob = 1./np.sum((cumsumYtheory - yTrue)**2)
     
     #if (prob > maxProb):
 
@@ -59,7 +60,12 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
         pdb.set_trace()
         return -np.inf
 
-    #prob += norm.logpdf( theta[1], 0.2, scale=0.17 )
+    #prob += norm.logpdf( theta[0], 0.7, scale=0.1 )
+    #if (theta[0] < 0.6) & (1./np.sum((trueTheory - yTrue)**2) < prob):
+     #   pdb.set_trace()
+
+
+    
     return prob
     
 

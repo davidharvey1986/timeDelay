@@ -57,8 +57,8 @@ def minimumTimeDelay( sampleSize=10000):
     axarr[2,0].set_xlim( 0.6, 0.8)
     
 
-    hundreds = mlines.Line2D([], [], color='blue', label=r'$\Delta t = 10$ days')
-    thousand = mlines.Line2D([], [], color='red', label=r'$\Delta t = 0$ days')
+    hundreds = mlines.Line2D([], [], color='blue', label=r'$\Delta t_{\rm min} = 10$ days')
+    thousand = mlines.Line2D([], [], color='red', label=r'$\Delta t_{\rm min} = 0$ days')
     
     axarr[0,1].legend(handles=[hundreds,thousand], \
         bbox_to_anchor=(0., 0.25, 1.0, .0), loc=4)

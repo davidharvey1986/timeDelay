@@ -20,29 +20,38 @@ mpl.rcParams['xtick.direction'] = 'in'
 from powerLawFit import *
 from scipy.ndimage import gaussian_filter as gauss
 import analyseSISexample as SISexample
-
+from matplotlib import gridspec
 from matplotlib import rcParams
 rcParams["font.size"] = 16
     
     
-def main():
+def main( withData=True):
     '''
     Create a plot of the integrated probability distribution over all redshift and lenses
     for different hubble parameters
     '''
 
-    plt.figure(figsize=(8,6))
 
-    axisA = plt.gca()
+    if withData:
+        plt.figure(figsize=(8,8))
+
+        gs = gridspec.GridSpec(5,1)
+        axisA = plt.subplot(gs[:3,0])
+        axisB =  plt.subplot(gs[3:,0])
+    else:
+        plt.figure(figsize=(8,6))
+
+        axisA = plt.gca()
     
     
     hubbleParameters = [50., 60., 70., 80., 90., 100.]
-    colors = ['r','b','g','c','orange','k']
+    colors = ['r','b','g','c','orange','grey']
 
     allBeta = []
     allBetaError = []
     peakTimeDelay = []
     peakTimeDelayError = []
+    pdf = fdm.getObservations()
 
     for iColor, iHubbleParameter in enumerate(hubbleParameters):
         pklFileName = '../output/CDM/selectionFunction/SF_%i_lsst.pkl' % iHubbleParameter
@@ -61,18 +70,30 @@ def main():
             r"H0=%i kms/Mpc" % iHubbleParameter, axisA, \
                     yType='y', nofill=False )
 
-    
-    axisA.legend()
+        if withData:
+            diff = [ (1 -pdf['y'][iT]) - finalMergedPDFdict['y'][np.argmin(np.abs(pdf['x'][iT] - finalMergedPDFdict['x']))] for iT in range(len(pdf['x']))]
+            axisB.plot( pdf['x'], diff, color=colors[iColor], label='Data')
+
+                                               
     #axisA.set_yscale('log')
     axisA.set_xlabel(r'log($\Delta t$/ days)', labelpad=-1)
     
     axisA.set_ylabel(r'P(>log[$\Delta t$])')
 
     axisA.set_xlim(-1,2.75)
-    #axisA.set_ylim(1e-2,2.)
-    pdf = fdm.getObservations()
-    axisA.plot(pdf['x'],1.-pdf['y'])
-    plt.savefig('../plots/allLensesDifferentHubbleValues.pdf')
+    if withData:
+        axisB.set_xlim(-1,2.75)
+        axisB.plot([-1,2.75],[0,0], 'k--')
+        axisA.plot(pdf['x'],1.-pdf['y'], 'k', lw=2, label='Data')
+        axisA.set_xticklabels([])
+        axisB.set_xlabel(r'log($\Delta t$/ days)', labelpad=-1)
+        axisB.set_ylabel(r'$CDF_{\rm data}-CDF_{\rm theory}$', labelpad=-1)
+        axisA.set_xlabel(r'', labelpad=-1)
+    axisA.legend()
+    if withData:
+        plt.savefig('../plots/allLensesDifferentHubbleValuesWithData.pdf')
+    else:
+        plt.savefig('../plots/allLensesDifferentHubbleValues.pdf')
     plt.show()
    
     
