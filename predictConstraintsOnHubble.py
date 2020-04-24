@@ -104,7 +104,7 @@ def nonPerfectFittingFunction(nComponents=5):
     
 
     sampleSizes, estimates = \
-     getPredictedConstraints(inputHubbleParameter, trueHubble=True)
+     getPredictedConstraints(inputHubbleParameter, trueHubble=False)
     estimates /=inputHubbleParameter/100.
 
     
@@ -171,7 +171,7 @@ def getPredictedConstraints(inputHubbleParameter, \
 
 
     #Loop through each sample size
-    for i, iSampleSize in enumerate(sampleSizes):
+    for i, iSampleSize in enumerate([300]):
         print("Sample Size: %i" % (iSampleSize))
         
         samples = \
@@ -245,7 +245,7 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
             samples = np.vstack( (samples, fitHubbleClass.samples))
 
 
-
+        pdb.set_trace()
     pkl.dump(samples, open(pklFile, 'wb'))
         
     return samples

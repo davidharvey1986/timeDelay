@@ -30,7 +30,7 @@ class hubbleInterpolator:
         '''
         
         self.hubbleParameters = \
-          np.array([50., 60., 70., 80., 90., 100.])
+          np.linspace(60,80,21)
 
         if pklFile is not None:
             if os.path.isfile( pklFile):

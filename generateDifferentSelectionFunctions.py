@@ -41,7 +41,7 @@ def selectionFunctionIndividualLenses( ):
     allFiles = glob.glob(dirD+'/CDM/z*/B*_cluster_0_*.json')
     
     hubbleParameters = \
-      np.array([50., 60., 70., 80., 90., 100.])
+      np.linspace(60,80,21)
     #hubbleParameter = 70.
 
     for hubbleParameter in hubbleParameters:
@@ -96,7 +96,7 @@ def selectFunctionForAllLenses(useLsst=None):
     
 
     hubbleParameters = \
-      np.array([50., 60., 70., 80., 90., 100.])
+      np.linspace(60,80,21)
    
 
     for hubbleParameter in hubbleParameters:
@@ -249,5 +249,5 @@ def getSourceRedshiftWeight( z, zMed=1.0 ):
 if __name__ == "__main__":
     #selectionFunctionEnsembleHalos()
 #    selectFunctionForAllLenses()
-    #selectionFunctionIndividualLenses()
-    selectionFunctionIndividualLensesForData()
+    selectionFunctionIndividualLenses()
+    #selectionFunctionIndividualLensesForData()
