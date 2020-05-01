@@ -188,5 +188,5 @@ def getBestFitParameter( samples ):
         
 if __name__ == '__main__':
     #main()
-    #plotPCAanalysis()
-    plotFinalHubbleModel()
+    plotPCAanalysis()
+    #plotFinalHubbleModel()

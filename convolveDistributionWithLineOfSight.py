@@ -2,6 +2,42 @@
 from timeDelayDistributionClass import *
 from plotAsFunctionOfDensityProfile import *
 
+
+
+def saveAllLensesForMultipleCosmologies(rerun=False):
+    
+    
+    dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
+             
+    allFiles = glob.glob(dirD+'/CDM/z*/B**cluster_0_*_total_*.json')
+
+
+    hubbleParameters = np.linspace(60,80,11)
+    omegaMatter = np.linspace(0.25, 0.35, 11)
+    omegaK = np.linspace(-0.02, 0.02, 11)
+    omegaL = np.linspace(0.65,0.75,11)
+    cosmologyList = {'H0':hubbleParameters, 'OmegaM':omegaMatter, 'OmegaK':omegaK, 'OmegaL':omegaL}
+
+    for iCosmoPar in cosmologyList.keys():
+        cosmology = {'H0':70., 'OmegaM':0.3, 'OmegaK':0, 'OmegaL':0.7}
+        
+        for iParInCosmoList in cosmologyList[iCosmoPar]:
+            
+            cosmology[iCosmoPar] = iParInCosmoList
+
+            pklFileName = \
+              "../output/CDM/combinedPDF_h%0.2f_oM%0.4f_oK%0.4f_%0.4f.pkl" % \
+                        (cosmology['H0'],cosmology['OmegaM'],cosmology['OmegaK'], \
+                               cosmology['OmegaL'])
+            print(cosmology)
+                               
+            if os.path.isfile(pklFileName):
+                continue
+            finalMergedPDFdict = combineJsonFiles(allFiles, cosmology=cosmology)
+            pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
+            
+       
+        
 def getMagBiasedPDFs():
     dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
              
@@ -137,8 +173,7 @@ def saveAllLensesForMultipleHubbleParameters(rerun=False):
         if os.path.isfile(pklFileName)  & (not rerun):
             continue
         else:
-          
-            finalMergedPDFdict = combineJsonFiles(allFiles, newHubbleParameter=iHubbleParameter)
+            finalMergedPDFdict = combineJsonFiles(allFiles, cosmology=cosmology)
 
         pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
 
@@ -200,7 +235,7 @@ def saveAllRedshifts( rerun=False, integrate=False):
         
       
     
-def combineJsonFiles( listOfJsonFiles, newHubbleParameter=100.0, zLens=None):
+def combineJsonFiles( listOfJsonFiles, cosmology=None, zLens=None):
     '''
     Combine the given list of Json Files into a single 
     histogram.
@@ -220,7 +255,7 @@ def combineJsonFiles( listOfJsonFiles, newHubbleParameter=100.0, zLens=None):
     for iJsonFile in listOfJsonFiles:
          cluster = \
            timeDelayDistribution( iJsonFile, \
-                newHubbleParameter=newHubbleParameter, \
+                cosmology=cosmology, \
                 timeDelayBins=timeDelayBins,zLens=zLens)
 
          z0 = cluster.zLens
@@ -360,5 +395,5 @@ if __name__ == "__main__":
     #saveAllRedshifts( rerun=True, integrate=False)
     ##saveIndividualHalosAndRedshifts( rerun=True)
     #saveIndividualHalos( rerun=True)
-    saveAllLensesForMultipleHubbleParameters( rerun=True)
-
+    #saveAllLensesForMultipleHubbleParameters( rerun=True)
+    saveAllLensesForMultipleCosmologies()

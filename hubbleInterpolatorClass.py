@@ -40,54 +40,66 @@ class hubbleInterpolator:
                 return
         
         self.timeDelayDistClasses = []
-
-        features = np.array([], dtype=[('hubbleParameter', float), \
-                        ('zLens',float), ('densityProfile', float)])
         
-        self.nFeatures = len(features.dtype)
 
 
         self.pdfArray = None
-        dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
 
-        allFiles = glob.glob(dirD+'/CDM/z*/B*_cluster_0_*.json')
         rGrid = getDensity.getRadGrid()
+
+        allDistributionsPklFile = \
+          "../output/CDM/selectionFunction/"+\
+          "allSelectionFunctionsIndividualLensesAndCosmologies.pkl"
+          
+        allDistributions = pkl.load(open(allDistributionsPklFile,'rb'))
+
+        cosmoKeys =  allDistributions[0]['cosmology'].keys()
         
-        for iColor, iHubbleParameter in enumerate(self.hubbleParameters):
-            for iFile in allFiles:
-                fileName = iFile.split('/')[-1]
-                
+        featureDtype = [ (i, float) for i in cosmoKeys]
+        featureDtype.append( ('zLens',float) )
+        featureDtype.append( ('densityProfile', float))
+        features = np.array([], dtype=featureDtype)
+        self.nFeatures = len(features.dtype)
 
-                zLensStr = iFile.split('/')[-2]
-                zLens = np.float(zLensStr.split('_')[1])
+        for finalMergedPDFdict in allDistributions:
+            fileName = finalMergedPDFdict['fileNames'][0]
+            print(fileName)
+            zLensStr = fileName.split('/')[-2]
+            zLens = np.float(zLensStr.split('_')[1])
+            print(zLens)
+            finalMergedPDFdict['y'] = \
+              finalMergedPDFdict['y'][ finalMergedPDFdict['x'] > \
+                                           self.logMinimumTimeDelay]
+            finalMergedPDFdict['x'] = \
+              finalMergedPDFdict['x'][ finalMergedPDFdict['x'] > \
+                                           self.logMinimumTimeDelay]
 
-                pklFileName = \
-                  '../output/CDM/selectionFunction/SF_%s_%s_%i_lsst.pkl' \
-                  % (zLensStr,fileName,iHubbleParameter )
-              
+            finalMergedPDFdict['y'] = \
+              np.cumsum(finalMergedPDFdict['y'])/\
+              np.sum(finalMergedPDFdict['y'])
             
-                finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
-                finalMergedPDFdict['y'] = finalMergedPDFdict['y'][ finalMergedPDFdict['x'] > self.logMinimumTimeDelay]
-                finalMergedPDFdict['x'] = finalMergedPDFdict['x'][ finalMergedPDFdict['x'] > self.logMinimumTimeDelay]
+            if self.pdfArray is None:
+                self.pdfArray = finalMergedPDFdict['y']
+            else:
+                self.pdfArray = \
+                  np.vstack((self.pdfArray, finalMergedPDFdict['y']))
 
-                finalMergedPDFdict['y'] = np.cumsum(finalMergedPDFdict['y'])/np.sum(finalMergedPDFdict['y'])
+            densityProfile = \
+              getDensity.getDensityProfileIndex(fileName, rGrid=rGrid)[0]
+
+            allPars = [ finalMergedPDFdict['cosmology'][i] for i in cosmoKeys]
+            allPars.append(zLens)
+            allPars.append(densityProfile)
+
+            iFeature = np.array(allPars, dtype=features.dtype)
+
+            #TO do this allPars needs to be a tuple!
+            features = np.append( features, np.array(tuple(allPars), dtype = featureDtype))
             
-                if self.pdfArray is None:
-                    self.pdfArray = finalMergedPDFdict['y']
-                else:
-                    self.pdfArray = \
-                      np.vstack((self.pdfArray, finalMergedPDFdict['y']))
 
-                densityProfile = getDensity.getDensityProfileIndex(iFile, rGrid=rGrid)[0]
-                
-                iFeature = np.array( [(iHubbleParameter, zLens, densityProfile )], \
-                    dtype = features.dtype)
 
-                
-                features = np.append( features, iFeature)
-            
         self.features = features
-        self.features['hubbleParameter'] /= 100.
+        self.features['H0'] /= 100.
         #self.features['densityProfile'] *= -0.5
 
         self.timeDelays =  finalMergedPDFdict['x']
@@ -128,7 +140,7 @@ class hubbleInterpolator:
         
         self.reshapedFeatures = \
           self.features.view('<f8').reshape((self.nPDF,self.nFeatures))
-          
+        
         for i in range(self.nPrincipalComponents):
             
             gaussProcess = \

@@ -34,32 +34,40 @@ def selectionFunctionEnsembleHalos():
                                 useLsst = True)
                                 
             pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
-            
-def selectionFunctionIndividualLenses( ):
+  
+def selectionFunctionIndividualLenses(  ):
     dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
              
     allFiles = glob.glob(dirD+'/CDM/z*/B*_cluster_0_*.json')
     
-    hubbleParameters = \
-      np.linspace(60,80,21)
-    #hubbleParameter = 70.
 
-    for hubbleParameter in hubbleParameters:
-        
-        for iFile in allFiles:
-  
-            
-            fileName = iFile.split('/')[-1]
-            zLens =  iFile.split('/')[-2]
-            pklFileName = \
-              '../output/CDM/selectionFunction/SF_%s_%s_%i_lsst.pkl' \
-              % (zLens,fileName,hubbleParameter )
-            finalMergedPDFdict = \
-              selectionFunction([iFile], \
-                                newHubbleParameter=hubbleParameter,\
+    hubbleParameters = np.linspace(60,80,2)
+    omegaMatter = np.linspace(0.25, 0.35, 2)
+    omegaK = np.linspace(-0.02, 0.02, 2)
+    omegaL = np.linspace(0.65,0.75,2)
+
+    
+    pklFileName = "../output/CDM/selectionFunction/allSelectionFunctionsIndividualLensesAndCosmologies.pkl"
+    listOfSelectionFunctions = []
+    for iHubbleParameter in hubbleParameters:
+        for iOmegaM in omegaMatter:
+            for iOmegaK in omegaK:
+                for iOmegaL in omegaL:
+                    for iFile in allFiles:
+                        cosmology = {'H0':iHubbleParameter, \
+                        'OmegaM':iOmegaM, 'OmegaL':iOmegaL, \
+                                        'OmegaK':iOmegaK}
+                        
+                        finalMergedPDFdict = \
+                          selectionFunction([iFile], \
+                                cosmology=cosmology,\
                                 useLsst = True)
-                                
-            pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
+                        listOfSelectionFunctions.append(finalMergedPDFdict)
+                        
+    pkl.dump(listOfSelectionFunctions,open(pklFileName,'wb'), 2)
+            
+  
+
        
 def selectionFunctionIndividualLensesForData( ):
     dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
@@ -128,7 +136,7 @@ def selectFunctionForAllLenses(useLsst=None):
 
     
 
-def selectionFunction( listOfJsonFiles, newHubbleParameter=None, \
+def selectionFunction( listOfJsonFiles, cosmology=None, \
                            medianRedshift=1.0, useLsst=27 ):
     '''
     Combine the given list of Json Files into a single 
@@ -148,11 +156,12 @@ def selectionFunction( listOfJsonFiles, newHubbleParameter=None, \
     allFinalMergedPDF = None
     matchToThisXaxis = np.linspace(-3,4,100)
     zLenses = np.array([0.20, 0.25, 0.37, 0.50, 0.74, 1.0])
-
+    if cosmology is None:
+        cosmology={'h':0.7, 'OmegaM':0.3, 'OmegaK':0., 'OmegaL':0.7}
     for iJsonFile in listOfJsonFiles:
          cluster = \
-           timeDelayDistribution( iJsonFile, \
-                            newHubbleParameter=newHubbleParameter)
+           timeDelayDistribution( iJsonFile, cosmology=cosmology, \
+                                    outputPklFile='dontWrite')
         
          z0lens = cluster.zLens
          dzLens = zLenses[ np.arange(len(zLenses))[ z0lens == zLenses]+1] - z0lens
@@ -235,7 +244,9 @@ def selectionFunction( listOfJsonFiles, newHubbleParameter=None, \
         'yError':finalMergedPDFerror,\
         'yLensPlane':lensPlaneMergedPDF, \
         'yLensPlaneError':lensPlanePDFerror,
-      'nFluxRatios':nFluxRatios}
+      'nFluxRatios':nFluxRatios,
+      'cosmology':cosmology, \
+      'fileNames':listOfJsonFiles}
 
     return finalMergedPDFdict
 

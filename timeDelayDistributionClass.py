@@ -27,17 +27,22 @@ class timeDelayDistribution:
     def __init__( self, inputJsonFileName, \
                       timeDelayBins=None, \
                       outputPklFile=None, \
-                     newHubbleParameter=100,\
+                     cosmology=None,\
                       zLens=None):
                       
-        self.newHubbleParameter = newHubbleParameter
+        self.cosmology={'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., \
+                                'OmegaL':0.7}
+        for i in cosmology.keys():
+            self.cosmology[i] = cosmology[i]
+            
         self.timeDelayBins = timeDelayBins
         if outputPklFile is None:
-            if newHubbleParameter is not None:
-                outputPklFile = inputJsonFileName+'_'+str(newHubbleParameter)+'.pkl'
-            else:
-                outputPklFile = inputJsonFileName+'.pkl'
-
+            outputPklFile = \
+                  "%s_h%0.2f_oM%0.4f_oK%0.4f_%0.4f.pkl" % \
+                  (inputJsonFileName,self.cosmology['H0'],\
+                    self.cosmology['OmegaM'],self.cosmology['OmegaK'], \
+                  self.cosmology['OmegaL'])
+        
         self.inputJsonFileName  = inputJsonFileName
         self.cleanTimeDelays = inputJsonFileName+'.clean.pkl'
         
@@ -94,13 +99,16 @@ class timeDelayDistribution:
             iSourcePlaneDist = \
                   singleSourcePlaneDistribution( self.zLens, \
                             iSourcePlane, iTimeDelayData, \
-                            newHubbleParameter=self.newHubbleParameter,\
+                            cosmology=self.cosmology,\
                             timeDelayBins=self.timeDelayBins)
+                            
             if iSourcePlaneDist.flag == -1:
                 continue
-            iSourcePlaneDist.__module__ == 'convolveDistributionWithLineOfSight'
+            iSourcePlaneDist.__module__ == \
+              'convolveDistributionWithLineOfSight'
             self.finalPDF['finalLoS'].append(iSourcePlaneDist)
-        self.saveInPickle()
+        if self.outputPklFile != 'dontWrite':
+            self.saveInPickle()
         
     def loadFromPickle( self ):
         if not os.path.isfile(self.outputPklFile):
@@ -115,15 +123,22 @@ class timeDelayDistribution:
         pkl.dump(self.__dict__,open(self.outputPklFile,'wb'))
                         
             
-class singleSourcePlaneDistribution:
+class singleSourcePlaneDistribution(timeDelayDistribution):
     '''
     This is a single source plane distribution
     '''
 
-    def __init__( self, lensRedshift, jsonData, timeDelayData, \
-            newHubbleParameter = None, timeDelayBins=None ):
+    def __init__( self, lensRedshift, jsonData, timeDelayData,  \
+                            cosmology=None,\
+                            timeDelayBins=None ):
+                            
+        self.cosmology={'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., \
+                                'OmegaL':0.7}
 
-        
+        for i in cosmology.keys():
+            self.cosmology[i] = cosmology[i]
+
+                
         self.timeDelayBins = timeDelayBins
         self.data = jsonData
         self.timeDelayData = timeDelayData
@@ -139,18 +154,24 @@ class singleSourcePlaneDistribution:
         if self.flag == -1:
             return
         
-        
         self.convolveTimeDelayDistributionWithLineOfSight()
 
-        if newHubbleParameter is not None:
-            self.timeDelayWithLineOfSightPDF['x'] += self.rescaleToNewHubbleParameter(newHubbleParameter)
-            self.timeDelayPDF['x'] += self.rescaleToNewHubbleParameter(newHubbleParameter)
+        cosmologyRescale = self.rescaleToNewCosmology()
+        
+        self.timeDelayPDF['x'] += cosmologyRescale
+        self.timeDelayWithLineOfSightPDF['x'] += cosmologyRescale
+        self.biasedTimeDelayWithLineOfSightPDF['x'] += cosmologyRescale
+        self.biasedTimeDelayPDF['x'] += cosmologyRescale
+        
+    def rescaleToNewCosmology( self ):
+        
+         timeDelayDistanceHubbleX =   \
+           self.getTimeDelayDistance( self.cosmology )
+         timeDelayDistanceHubble100 = \
+           self.getTimeDelayDistance( )
 
-    def rescaleToNewHubbleParameter( self, newHubbleParameter):
-         timeDelayDistanceHubbleX =   self.getTimeDelayDistance( newHubbleParameter )
-         timeDelayDistanceHubble100 = self.getTimeDelayDistance( 100. )
-         
-         return np.log10(timeDelayDistanceHubbleX/timeDelayDistanceHubble100)
+         return np.log10(timeDelayDistanceHubbleX/\
+                             timeDelayDistanceHubble100)
 
 
     def getMagnificationBias( self ):
@@ -158,17 +179,23 @@ class singleSourcePlaneDistribution:
         self.magBias= magnificationBias( self.zSource,  self.minMagnification)
     
         
-    def getTimeDelayDistance( self, HubbleConstant, omegaLambda=1.0):
+    def getTimeDelayDistance( self, cosmology=None):
         '''
         Get the time delay distance for this particle lens
         '''
 
         #Wessels distance class
+        inputCosmology={'H0':100.0, 'OmegaM':0.3, 'OmegaK':0., \
+                                'OmegaL':0.7}
+        if cosmology is not None:
+            for i in cosmology.keys():
+                inputCosmology[i] = cosmology[i]
+            
         
-        omegaMatter = 1. - omegaLambda
-        OmegaK = 1. - omegaMatter - omegaLambda
-        
-        distanceClass = Distances.Distances(  self.zLens, self.data["z"], omegaMatter, OmegaK, HubbleConstant)
+        distanceClass = \
+          Distances.Distances(  self.zLens, self.data["z"], \
+                        inputCosmology['OmegaM'], inputCosmology['OmegaK'], \
+                            inputCosmology['H0'], inputCosmology['OmegaL'])
 
         
         cInMpcPerSecond = 9.7156e-15
@@ -263,12 +290,15 @@ class singleSourcePlaneDistribution:
         I need the weighting so when I combine the distributions
         They are the same
         '''
-
-        myTmpDistances = Distances.Distances(0, self.zLens, 0.272, 0, 100.)
+        
+        myTmpDistances = Distances.Distances(0, self.zLens, self.cosmology['OmegaM'], \
+                                self.cosmology['OmegaK'], self.cosmology['H0'], self.cosmology['OmegaL'])
         lensWeight, _, _, _ = myTmpDistances.Kernel_And_dVdZ( self.zLens)
 
         # correct for the error in the weighting
-        myTmpDistances = Distances.Distances(self.zLens, self.data["z"], 0.272, 0, 100.)
+        myTmpDistances = Distances.Distances(self.zLens, self.data["z"], self.cosmology['OmegaM'], \
+                                self.cosmology['OmegaK'], self.cosmology['H0'], self.cosmology['OmegaL'])
+                                
         sourceWeight, _, _, wrongSourceWeight = myTmpDistances.Kernel_And_dVdZ(self.data["z"])
 
         #Becasue i weight a single redshift by volume i need to normalise to number

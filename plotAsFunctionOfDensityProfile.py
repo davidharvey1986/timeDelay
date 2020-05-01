@@ -126,8 +126,37 @@ def main( ):
     ax.set_ylabel('PDF Power Law Index')
     plt.savefig('../plots/densityProfile.pdf')
     plt.show()
+
+def saveAllDensityProfileIndexes(load=True):
+    #So i dont have to recall the functiuon which takes a while
+    #in the hubble interpolator
+    
+    allJsonFiles = glob.glob('/Users/DavidHarvey/Documents/Work/TimeDelay/output/CDM/z*/*.json')
+
+    densityProfileIndex = np.zeros((len(allJsonFiles),2))
+    rGrid = getRadGrid()
+    for i, iJson in enumerate(allJsonFiles):
+        print(getDensityProfileIndex( iJson, rGrid=None, nRadialBins=10, load=load))
+        indexAndError =  getDensityProfileIndex( iJson, rGrid=None, nRadialBins=10, load=load)
+        densityProfileIndex[i,:] = indexAndError
+    
+    pkl.dump([allJsonFiles,densityProfileIndex], open('pickles/densityProfileIndexes.pkl', 'wb'), 2)
     
 def getDensityProfileIndex( jsonFileName, rGrid=None, nRadialBins=10):
+
+    if os.path.isfile( 'pickles/densityProfileIndexes.pkl'):
+        jsonFiles, indexes = \
+          pkl.load(open('pickles/densityProfileIndexes.pkl','rb'))
+
+        matchedJson = '/'.join(jsonFileName.split('/')[-2:])
+        matchedJsonToThese = \
+          np.array([ '/'.join(i.split('/')[-2:]) for i in jsonFiles])
+        indexes =  indexes[matchedJsonToThese == matchedJson, :]
+        if len(indexes) == 0:
+            print('cant find file name %s' % jsonFileName)
+            pdb.set_trace()
+
+        return indexes[0]
     if rGrid is None:
         rGrid = getRadGrid()
         
@@ -224,5 +253,6 @@ def getAndPlotTrend( x, y, axis, fmt, color='grey', pltX=None, sigma=None):
     
 
 if __name__ == '__main__':
-    main()
+    saveAllDensityProfileIndexes()
+    #main()
 

@@ -3,16 +3,17 @@ import numpy as np
 import math
 
 class Distances:
-    def __init__(self, zLens, zSource, OmegaM, OmegaK, H0):
+    def __init__(self, zLens, zSource, OmegaM, OmegaK, H0, OmegaV):
         #DH Has changed this so i cna add H0
         
         self.zl = zLens         # redshift lens plane
         self.zs = zSource       # redshift source plane
 
         self.cOverH0 = 2.99792458e5/H0                  # units of c/H0: Mpc/h
-        self.OmegaV = 1 - OmegaM - OmegaK          # density parameter of vacuum
+        self.OmegaV = OmegaV        # density parameter of vacuum
         self.OmegaM = OmegaM                       # density parameter of matter/dust
         self.OmegaK = OmegaK
+
         self.K = - OmegaK / self.cOverH0**2        # curvature parameter: (H0/c)^2*(OmegaV+OmegaM-1)
     
         self.Dls = self.RedshiftToComovAngDistance(self.zl, self.zs) # angular diameter distance from lens to source
