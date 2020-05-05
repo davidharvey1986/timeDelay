@@ -12,7 +12,7 @@ from sklearn.gaussian_process.kernels import ConstantKernel
 from sklearn.gaussian_process.kernels import  WhiteKernel
 from sklearn.gaussian_process.kernels import  Matern
 from sklearn.gaussian_process.kernels import   ExpSineSquared
-
+import time
 class hubbleInterpolator:
     '''
     The idea is to model the PDF and interpolate between source
@@ -141,13 +141,22 @@ class hubbleInterpolator:
           self.features.view('<f8').reshape((self.nPDF,self.nFeatures))
         
         for i in range(self.nPrincipalComponents):
-            
-            gaussProcess = \
-              GaussianProcessRegressor( alpha=1e-3, kernel=kernel)
 
-            gaussProcess.fit( self.reshapedFeatures, self.principalComponents[:,i])
+            testSamples =  \
+              ((10**np.linspace(-2,0,5))*\
+              len(self.principalComponents[:,i])).astype(int)
+            pdb.set_trace()
+            for iTester in testSamples:
+                start = time.time()
+                gaussProcess = \
+                  GaussianProcessRegressor( alpha=1e-3, kernel=kernel)
 
-            
+                gaussProcess.fit( self.reshapedFeatures[:iTester,:], \
+                                      self.principalComponents[:iTester,i])
+
+                finish = time.time()
+                print("Time to train is %0.2f" % (finish-start))
+                pdb.set_trace()
             self.predictor.append(gaussProcess)
             
             #cubicSpline = CubicSpline(self.hubbleParameters, self.principalComponents[:,i])
@@ -165,7 +174,7 @@ class hubbleInterpolator:
         Run the two programs to learn and inteprolate the pdf
         i will save it in a pkl file as it might take some time.
         '''
-        pdb.set_trace()
+
         if modelFile is None:
             modelFile = 'pickles/hubbleInterpolatorModel.pkl'
         if os.path.isfile(modelFile):
