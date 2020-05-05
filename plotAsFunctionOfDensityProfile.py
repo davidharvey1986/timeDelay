@@ -136,11 +136,11 @@ def saveAllDensityProfileIndexes(load=True):
     densityProfileIndex = np.zeros((len(allJsonFiles),2))
     rGrid = getRadGrid()
     for i, iJson in enumerate(allJsonFiles):
-        print(getDensityProfileIndex( iJson, rGrid=None, nRadialBins=10, load=load))
         indexAndError =  getDensityProfileIndex( iJson, rGrid=None, nRadialBins=10, load=load)
         densityProfileIndex[i,:] = indexAndError
     
-    pkl.dump([allJsonFiles,densityProfileIndex], open('pickles/densityProfileIndexes.pkl', 'wb'), 2)
+    pkl.dump([allJsonFiles,densityProfileIndex], \
+                 open('pickles/densityProfileIndexes.pkl', 'wb'), 2)
     
 def getDensityProfileIndex( jsonFileName, rGrid=None, nRadialBins=10):
 

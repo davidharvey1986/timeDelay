@@ -19,11 +19,24 @@ class hubbleInterpolator:
     planes
     '''
 
-    def __init__( self, nPrincipalComponents=7, minimumTimeDelay=0.):
+    def __init__( self, nPrincipalComponents=6, minimumTimeDelay=-3., \
+                      nSubSamples=100, inputFeaturesToTrain=None):
+        '''
+        inputTrainFeatures: a list of the cosmology keys to train over
+        '''
         
         self.logMinimumTimeDelay = np.log10(np.max([minimumTimeDelay, 0.1]))
         self.nPrincipalComponents = nPrincipalComponents
-        
+
+        # if i dont want to train all the cosmologies
+        self.inputFeaturesToTrain = inputFeaturesToTrain
+        #if so i need a defaul cosmology
+        self.fiducialCosmology = \
+          {'H0':70., 'OmegaM':0.3, 'OmegaL':0.7, 'OmegaK':0.}
+            
+        #How to split up the trianing sample to speed it up
+        self.nSubSamples = nSubSamples
+ 
     def getTrainingData( self, pklFile = 'exactPDFpickles/trainingData.pkl' ):
         '''
         Import all the json files from a given lens redshift
@@ -53,7 +66,16 @@ class hubbleInterpolator:
           
         allDistributions = pkl.load(open(allDistributionsPklFile,'rb'))
 
-        cosmoKeys =  allDistributions[0]['cosmology'].keys()
+        if self.inputFeaturesToTrain is None:
+            cosmoKeys =  allDistributions[0]['cosmology'].keys()
+        else:
+            cosmoKeys = self.inputFeaturesToTrain
+
+        notTrainTheseFeatures = \
+          [ i for i in allDistributions[0]['cosmology'].keys() \
+            if i not in cosmoKeys ]
+        
+        print("Training over %i keys" % len(cosmoKeys))
         
         featureDtype = [ (i, float) for i in cosmoKeys]
         featureDtype.append( ('zLens',float) )
@@ -62,11 +84,20 @@ class hubbleInterpolator:
         self.nFeatures = len(features.dtype)
 
         for finalMergedPDFdict in allDistributions:
+            #Skip over those sampels that i am not training
+            doNotTrainThisSample =  \
+              np.any(np.array([self.fiducialCosmology[iCosmoKey] != \
+              finalMergedPDFdict['cosmology'][iCosmoKey] \
+              for iCosmoKey in notTrainTheseFeatures]))
+
+            if doNotTrainThisSample:
+                continue
+
+            
+
             fileName = finalMergedPDFdict['fileNames'][0]
-            print(fileName)
             zLensStr = fileName.split('/')[-2]
             zLens = np.float(zLensStr.split('_')[1])
-            print(zLens)
             finalMergedPDFdict['y'] = \
               finalMergedPDFdict['y'][ finalMergedPDFdict['x'] > \
                                            self.logMinimumTimeDelay]
@@ -102,7 +133,10 @@ class hubbleInterpolator:
         self.features['H0'] /= 100.
         #self.features['densityProfile'] *= -0.5
 
-        self.timeDelays =  finalMergedPDFdict['x']
+        self.timeDelays =  \
+          finalMergedPDFdict['x'][ finalMergedPDFdict['x'] > \
+                                       self.logMinimumTimeDelay]
+
         if pklFile is not None:
             pkl.dump([self.features,  self.timeDelays, self.pdfArray], \
                      open(pklFile, 'wb'))
@@ -136,28 +170,54 @@ class hubbleInterpolator:
         #  WhiteKernel(noise_level=1.)
 
         self.nPDF = len(self.features)
-        
         self.reshapedFeatures = \
           self.features.view('<f8').reshape((self.nPDF,self.nFeatures))
+
+
+        #Shuffle the features and corresponding principal comp up for the subsampling
+        indexes = np.arange(self.features.shape[0])
+        #np.random.shuffle(indexes)
+        
+        shuffledFeatures = self.reshapedFeatures[indexes]
+        shuffledPrincipalComponents = self.principalComponents[indexes]
         
         for i in range(self.nPrincipalComponents):
+            #it is taking too long to train all so split in to subsamples
+            #Max a subsample can be is 8250 as this too 500seconds to train
+            subSamples =  \
+              (np.linspace(0., 1., self.nSubSamples+1)*
+              len(shuffledPrincipalComponents[:,i])).astype(int)
+            
+            if subSamples[1] > 8250:
+                raise ValueError("The subsamples are too large (%i)" \
+                                     % subSamples[1])
 
-            testSamples =  \
-              ((10**np.linspace(-2,0,5))*\
-              len(self.principalComponents[:,i])).astype(int)
-            pdb.set_trace()
-            for iTester in testSamples:
+            gaussianProcessSubsamples = []
+
+            
+            for iSubSample in np.arange(self.nSubSamples):
+                print("Principal Component %i/%i, SubSample %i/%i" % \
+                          (i+1, self.nPrincipalComponents, iSubSample+1,self.nSubSamples) )
                 start = time.time()
+
                 gaussProcess = \
                   GaussianProcessRegressor( alpha=1e-3, kernel=kernel)
+                  
+                startSample = subSamples[iSubSample]
+                endSample = subSamples[iSubSample+1]
 
-                gaussProcess.fit( self.reshapedFeatures[:iTester,:], \
-                                      self.principalComponents[:iTester,i])
+                subSampleFeatures = \
+                  shuffledFeatures[startSample:endSample,:]
+                subSamplePrincipalComp = \
+                  shuffledPrincipalComponents[startSample:endSample,i]
+                  
+                gaussProcess.fit(subSampleFeatures, subSamplePrincipalComp)
 
                 finish = time.time()
-                print("Time to train is %0.2f" % (finish-start))
-                pdb.set_trace()
-            self.predictor.append(gaussProcess)
+                print("Difference in time is %i" % (finish-start))
+                gaussianProcessSubsamples.append(gaussProcess)
+                
+            self.predictor.append(gaussianProcessSubsamples)
             
             #cubicSpline = CubicSpline(self.hubbleParameters, self.principalComponents[:,i])
             #self.cubicSplineInterpolator.append(cubicSpline)
@@ -166,8 +226,8 @@ class hubbleInterpolator:
 
         
             
-        print("log likelihood of predictor is %0.3f" %\
-                  self.getGaussProcessLogLike())
+        #print("log likelihood of predictor is %0.3f" %\
+        #          self.getGaussProcessLogLike())
 
     def getTimeDelayModel( self, modelFile=None ):
         '''
@@ -177,14 +237,15 @@ class hubbleInterpolator:
 
         if modelFile is None:
             modelFile = 'pickles/hubbleInterpolatorModel.pkl'
+
+        self.extractPrincipalComponents()
         if os.path.isfile(modelFile):
             self.predictor = pkl.load(open(modelFile, 'rb'))
         else:
-            self.extractPrincipalComponents()
             self.learnPrincipalComponents()
             pkl.dump( self.predictor, open(modelFile, 'wb'))
 
-    def getGaussProcessLogLike( self ):
+    def getGaussProcessLogLike( self, theta=None ):
 
         logLike = 0
         for iGaussProcess in self.predictor:
@@ -192,24 +253,35 @@ class hubbleInterpolator:
             logLike += iGaussProcess.log_marginal_likelihood()
             
         return logLike
+    
     def predictPDF( self, timeDelays, inputFeatureDict ):
         '''
         For now compare to the trained data
         '''
 
-        inputFeatures = np.array([ inputFeatureDict[i] for i in self.features.dtype.names])
+        inputFeatures = \
+          np.array([ inputFeatureDict[i] \
+                         for i in self.features.dtype.names])
         
         predictedComponents = \
-          np.zeros(self.nPrincipalComponents)
+          np.zeros((self.nPrincipalComponents, self.nSubSamples))
 
         
         for iComponent in range(self.nPrincipalComponents):
+            #there are now many preditors for the subsamples
+            for iSubPredictor in np.arange(self.nSubSamples):
+                #So the predictor for this subsample is
+                predictor = self.predictor[iComponent][iSubPredictor]
+                
+                predictedComponents[iComponent, iSubPredictor] = \
+                  predictor.predict(inputFeatures.reshape(1,-1))
 
-            predictedComponents[iComponent] = \
-              self.predictor[iComponent].predict(inputFeatures.reshape(1,-1))
-
+        self.predictedComponents = predictedComponents
+        estimatedComponents = \
+          np.median(self.predictedComponents, axis=1)
+          
         predictedTransform = \
-          self.pca.inverse_transform(  predictedComponents )
+          self.pca.inverse_transform( estimatedComponents )
 
         #Just interpolate the x range for plotting
         pdfInterpolator = \
@@ -222,6 +294,7 @@ class hubbleInterpolator:
             #raise ValueError("Predicted probabilites negative")
         
         predicted[ predicted< 0] = 0
+        
         return predicted
 
     def plotPredictedPDF( self, inputFeatures):
