@@ -6,8 +6,9 @@ Can i predict what would happen if you got the wrong selection function?
 '''
 from convolveDistributionWithLineOfSight import *
 from scipy.stats import lognorm
-
+import time
 import lsstSelectionFunction as lsstSelect
+from termcolor import colored
 
 def selectionFunctionEnsembleHalos():
     dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
@@ -40,20 +41,27 @@ def selectionFunctionIndividualLenses(  ):
              
     allFiles = glob.glob(dirD+'/CDM/z*/B*_cluster_0_*.json')
     
-
-    hubbleParameters = np.linspace(60,80,2)
-    omegaMatter = np.linspace(0.25, 0.35, 2)
-    omegaK = np.linspace(-0.02, 0.02, 2)
-    omegaL = np.linspace(0.65,0.75,2)
-
+    nHubble = 11
+    nOmegaM = 5
+    nOmegaK = 5
+    nOmegaL = 5
+    hubbleParameters = np.linspace(65,75,nHubble)
+    omegaMatter = np.linspace(0.25, 0.35, nOmegaM)
+    omegaK = np.linspace(-0.02, 0.02, nOmegaK)
+    omegaL = np.linspace(0.65,0.75,nOmegaL)
+    totalTimes = nHubble*nOmegaM*nOmegaK*nOmegaL*len(allFiles)
     
-    pklFileName = "../output/CDM/selectionFunction/allSelectionFunctionsIndividualLensesAndCosmologies.pkl"
+    pklFileName = "../output/CDM/selectionFunction/sparselyPopulatedParamSpace.pkl"
     listOfSelectionFunctions = []
+    i = 0
     for iHubbleParameter in hubbleParameters:
         for iOmegaM in omegaMatter:
             for iOmegaK in omegaK:
                 for iOmegaL in omegaL:
+                    timeStart = time.time()
                     for iFile in allFiles:
+                        i += 1
+                        
                         cosmology = {'H0':iHubbleParameter, \
                         'OmegaM':iOmegaM, 'OmegaL':iOmegaL, \
                                         'OmegaK':iOmegaK}
@@ -63,7 +71,11 @@ def selectionFunctionIndividualLenses(  ):
                                 cosmology=cosmology,\
                                 useLsst = True)
                         listOfSelectionFunctions.append(finalMergedPDFdict)
-                        
+                    timeEnd = time.time()
+                    timediff = (timeEnd - timeStart)/len(allFiles)
+                    print(colored("Time left finish time %0.2f hours" % \
+                                    (timediff*(totalTimes-i)/60./60.),'red'))
+
     pkl.dump(listOfSelectionFunctions,open(pklFileName,'wb'), 2)
             
   

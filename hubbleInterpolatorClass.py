@@ -49,7 +49,7 @@ class hubbleInterpolator:
 
         allDistributionsPklFile = \
           "../output/CDM/selectionFunction/"+\
-          "allSelectionFunctionsIndividualLensesAndCosmologies.pkl"
+          "sparselyPopulatedParamSpace.pkl"
           
         allDistributions = pkl.load(open(allDistributionsPklFile,'rb'))
 
@@ -116,14 +116,13 @@ class hubbleInterpolator:
         self.principalComponents = self.pca.transform( self.pdfArray )
 
             
-    def learnPrincipalComponents( self, weight=1. ):
+    def learnPrincipalComponents( self, weight=1.):
         '''
         Using a mixture of Gaussian Processes 
         predict the distributions of compoentns
         It will return a list of nPrincipalComponent models that try to
         learn each component to the data
         '''
-        
         #Now regress each component to any hubble value
         
         #self.learnedGPforPCAcomponent = []
@@ -153,8 +152,29 @@ class hubbleInterpolator:
             
             #cubicSpline = CubicSpline(self.hubbleParameters, self.principalComponents[:,i])
             #self.cubicSplineInterpolator.append(cubicSpline)
+
+       
+
+        
+            
         print("log likelihood of predictor is %0.3f" %\
                   self.getGaussProcessLogLike())
+
+    def getTimeDelayModel( self, modelFile=None ):
+        '''
+        Run the two programs to learn and inteprolate the pdf
+        i will save it in a pkl file as it might take some time.
+        '''
+        pdb.set_trace()
+        if modelFile is None:
+            modelFile = 'pickles/hubbleInterpolatorModel.pkl'
+        if os.path.isfile(modelFile):
+            self.predictor = pkl.load(open(modelFile, 'rb'))
+        else:
+            self.extractPrincipalComponents()
+            self.learnPrincipalComponents()
+            pkl.dump( self.predictor, open(modelFile, 'wb'))
+
     def getGaussProcessLogLike( self ):
 
         logLike = 0
@@ -163,17 +183,19 @@ class hubbleInterpolator:
             logLike += iGaussProcess.log_marginal_likelihood()
             
         return logLike
-    def predictPDF( self, timeDelays, inputFeatures ):
+    def predictPDF( self, timeDelays, inputFeatureDict ):
         '''
         For now compare to the trained data
         '''
+
+        inputFeatures = np.array([ inputFeatureDict[i] for i in self.features.dtype.names])
         
         predictedComponents = \
           np.zeros(self.nPrincipalComponents)
 
         
         for iComponent in range(self.nPrincipalComponents):
-            
+
             predictedComponents[iComponent] = \
               self.predictor[iComponent].predict(inputFeatures.reshape(1,-1))
 

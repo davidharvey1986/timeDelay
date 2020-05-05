@@ -28,29 +28,42 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
 
     
     #maxProb = 1./np.sum((maxProbCum - yTrue)**2)
+    thetaDict = {'H0':theta[0], 'zLens':theta[1], 'densityProfile':theta[2], \
+                     'OmegaM':theta[3], 'OmegaL':theta[4], 'OmegaK':theta[5]}
 
-
-    cumsumYtheory = hubbleInterpolator.predictPDF( xTrue, theta )
+    cumsumYtheory = hubbleInterpolator.predictPDF( xTrue, thetaDict )
     #cumsumYtheory /= np.max(cumsumYtheory)
-    trueTheta=np.array([0.7,0.4,-1.75])   
-    trueTheory = hubbleInterpolator.predictPDF( xTrue, trueTheta )
+    #trueTheta=np.array([0.7,0.4,-1.75])   
+    #trueTheory = hubbleInterpolator.predictPDF( xTrue, trueTheta )
 
     #if np.any(np.isfinite(yTheory) == False):
     #    return -np.inf
 
     #if np.any(yTheory < 0):
      #   return -np.inf
+
+    for iThetaKey in thetaDict.keys():
+        if (thetaDict[iThetaKey] < np.min(hubbleInterpolator.features[iThetaKey])) | \
+          (thetaDict[iThetaKey] > np.max(hubbleInterpolator.features[iThetaKey])):
+          
+          return -np.inf
+    '''
     if (theta[0] < 0.65) | (theta[0] > 0.75):
         return -np.inf
     if (theta[1] < 0.) | (theta[1] > 1.0):
         return -np.inf
     if (theta[2] < -2.) | (theta[2] > -1.0):
         return -np.inf
-    
+    if (theta[3] < 0.25) | (theta[2] > 0.35):
+        return -np.inf
+    if (theta[2] < -2.) | (theta[2] > -1.0):
+        return -np.inf
+    if (theta[2] < -2.) | (theta[2] > -1.0):
+        return -np.inf
     #cumsumYtheory = np.cumsum( yTheory )/np.sum(yTheory)
+    '''
 
-
-    prob = np.sum(norm.logpdf( cumsumYtheory[error!=0], yTrue[error!=0], scale=error[error!=0]))
+    #prob = np.sum(norm.logpdf( cumsumYtheory[error!=0], yTrue[error!=0], scale=error[error!=0]))
     
     prob = 1./np.sum((cumsumYtheory - yTrue)**2)
     
@@ -93,14 +106,17 @@ class fitHubbleParameterClass:
   
         nwalkers = 20
 
-        ndim = 3
+        ndim = len(self.hubbleInterpolator.features.dtype)
         burn_len=500
         chain_len=1000
         pos0 = np.random.rand(nwalkers,ndim)
         pos0[:,0] = np.random.rand( nwalkers) * 0.05 + 0.7
         pos0[:,1] =  np.random.randn( nwalkers) * 0.1 + 0.75
         pos0[:,2] =  np.random.randn( nwalkers) * 0.1 - 1.75
-        
+        pos0[:,3] =  np.random.uniform( 0.25, 0.35, nwalkers)
+        pos0[:,4] =  np.random.uniform( 0.65, 0.75, nwalkers)
+        pos0[:,5] =  np.random.uniform( -0.02, 0.02, nwalkers)
+
         args = (self.pdf['x'], self.pdf['y'], \
                     self.pdf['error'], self.hubbleInterpolator )
 

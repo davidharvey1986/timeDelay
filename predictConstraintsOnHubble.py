@@ -21,19 +21,19 @@ from scipy.ndimage import gaussian_filter as gauss
 
     
 def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
-                        trueHubble=True):
+                        trueDistribution=False):
 
     labels = \
-      [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$']
-    ndim = 3
-    figcorner, axarr = plt.subplots(ndim,ndim,figsize=(8,8))
+      [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$', r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$' ]
+    ndim = 6
+    figcorner, axarr = plt.subplots(ndim,ndim,figsize=(15,15))
     color = ['blue','red','green','cyan']
     
     for icolor, sampleSize in enumerate([10000]):
-        samples = getMCMCchainForSamplesSize(sampleSize, 10, 100., None, trueHubble=trueHubble)
+        samples = getMCMCchainForSamplesSize(sampleSize, 10,  None, trueDistribution=trueDistribution)
         
-        if (not trueHubble):
-            truths  = [0.7, 0.4, -1.75]
+        if (not trueDistribution):
+            truths  = [0.7, 0.5, -1.75, 0.3, 0.7, 0.]
         else:
             truths = None
             for i in axarr[:,0]:
@@ -42,7 +42,7 @@ def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
         nsamples = samples.shape[0]
                     
         corner.corner(samples , \
-                      bins=100, smooth=True, \
+                      bins=20, smooth=True, \
                       plot_datapoints=False,
                       fig=figcorner, \
                       labels=labels, plot_density=True, \
@@ -53,7 +53,7 @@ def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
                           truth_color='black')
 
         
-    if  trueHubble:
+    if  trueDistribution:
         reportParameters(samples)
         axarr[1,1].set_xlim( 0.45, 0.53)
         axarr[2,2].set_xlim( -1.9, -1.6)
@@ -81,8 +81,8 @@ def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
     
     ##axarr[0,1].legend(handles=[hundreds,thousand,tenthous], \
       #  bbox_to_anchor=(0., 0.25, 1.0, .0), loc=4)
-    if trueHubble:
-        plt.savefig('../plots/degenerciesTrueHubble.pdf')
+    if trueDistribution:
+        plt.savefig('../plots/degenerciesTrueDistribution.pdf')
     else:
         plt.savefig('../plots/degenercies.pdf')
     plt.show()
@@ -92,7 +92,6 @@ def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
 def nonPerfectFittingFunction(nComponents=5):
     fig = plt.figure(figsize=(10,6))
 
-    inputHubbleParameter = 70.
     #####
     #sampleSizes, estimates = \
     #  getPredictedConstraints(inputHubbleParameter)
@@ -104,7 +103,7 @@ def nonPerfectFittingFunction(nComponents=5):
     
 
     sampleSizes, estimates = \
-     getPredictedConstraints(inputHubbleParameter, trueHubble=False)
+     getPredictedConstraints(trueDistribution=False)
     estimates /=inputHubbleParameter/100.
 
     
@@ -146,11 +145,10 @@ def nonPerfectFittingFunction(nComponents=5):
     plt.savefig('../plots/statisticalErrorOnHubble.pdf')
     plt.show()
 
-def getPredictedConstraints(inputHubbleParameter, \
-                                nIterations = 10,\
+def getPredictedConstraints(nIterations = 100,\
                                 nSampleSizes = 11,\
                                 exactIndex=False,\
-                                trueHubble=False,\
+                                trueDistribution=False,\
                                 differentHalo=None,\
                                 minimumTimeDelay=0.):
 
@@ -161,8 +159,9 @@ def getPredictedConstraints(inputHubbleParameter, \
         hubbleInterpolaterClass.getTrainingData(pklFile='picklesMinimumDelay/trainingData.pkl')
     else:
         hubbleInterpolaterClass.getTrainingData('exactPDFpickles/trainingData.pkl')
-    hubbleInterpolaterClass.extractPrincipalComponents()
-    hubbleInterpolaterClass.learnPrincipalComponents()
+
+
+    hubbleInterpolaterClass.getTimeDelayModel()
 
 
     sampleSizes = 10**np.linspace(2,4,nSampleSizes)
@@ -171,13 +170,13 @@ def getPredictedConstraints(inputHubbleParameter, \
 
 
     #Loop through each sample size
-    for i, iSampleSize in enumerate([300]):
+    for i, iSampleSize in enumerate([10000]):
         print("Sample Size: %i" % (iSampleSize))
         
         samples = \
           getMCMCchainForSamplesSize(iSampleSize, nIterations, \
-                        inputHubbleParameter, hubbleInterpolaterClass,\
-                                         trueHubble=trueHubble,\
+                                         hubbleInterpolaterClass,\
+                                         trueDistribution=trueDistribution,\
                                          differentHalo=differentHalo,\
                                          minimumTimeDelay=minimumTimeDelay)
 
@@ -205,13 +204,13 @@ def getPredictedConstraints(inputHubbleParameter, \
 
     
 def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
-                    inputHubbleParameter, hubbleInterpolaterClass,\
-                    trueHubble=False, differentHalo=None,\
+                    hubbleInterpolaterClass,\
+                    trueDistribution=False, differentHalo=None,\
                     minimumTimeDelay=0.):
     samples = None
-
-    if trueHubble:
-        pklFile = 'picklesTrueHubble/multiFitSamples_%i.pkl' % iSampleSize
+    
+    if trueDistribution:
+        pklFile = 'picklesTrueDistribution/multiFitSamples_%i.pkl' % iSampleSize
     elif differentHalo is not None:
         pklFile = 'picklesDifferentHalo/multiFitSamples_%s_%i.pkl' % (differentHalo, iSampleSize)
     elif minimumTimeDelay > 0:
@@ -228,8 +227,8 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
         print("Iteration: %i/%i" % (iIteration+1, nIterations))
         selectedTimeDelays = \
               selectRandomSampleOfTimeDelays( iSampleSize, \
-                inputHubbleParameter, hubbleInterpolaterClass,\
-                    trueHubble=trueHubble,differentHalo=differentHalo,\
+                 hubbleInterpolaterClass,\
+                    trueDistribution=trueDistribution,differentHalo=differentHalo,\
                                 minimumTimeDelay=minimumTimeDelay)
       
         fitHubbleClass = \
@@ -245,14 +244,14 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
             samples = np.vstack( (samples, fitHubbleClass.samples))
 
 
-        pdb.set_trace()
+
     pkl.dump(samples, open(pklFile, 'wb'))
         
     return samples
 
 
-def selectRandomSampleOfTimeDelays( nSamples, hubbleParameter, \
-                        hubbleInterpolaterClass, trueHubble=False,\
+def selectRandomSampleOfTimeDelays( nSamples,  \
+                        hubbleInterpolaterClass, trueDistribution=False,\
                         differentHalo=None, minimumTimeDelay=0.):
     '''
     From a given pdf randomly select some time delays
@@ -263,30 +262,32 @@ def selectRandomSampleOfTimeDelays( nSamples, hubbleParameter, \
         minimumTimeDelay = 1e-3
         
     logMinimumTimeDelay = np.log10(minimumTimeDelay)
-    
-    pklFileName = \
-      '../output/CDM/selectionFunction/SF_%i_lsst.pkl' \
-      % (hubbleParameter)
+
+    if trueDistribution:
+        pklFileName = \
+      '../output/CDM/selectionFunction/'+\
+      'allSelectionFunctionsIndividualLensesAndCosmologies.pkl'
       
     if differentHalo is not None:
       pklFileName = \
         '../output/CDM/selectionFunction/SF_%s_%i_lsst.pkl' \
         % (differentHalo, hubbleParameter)
       
-    finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
+      allFinalMergedPDFdicts = pkl.load(open(pklFileName,'rb'))
 
-        
     interpolateToTheseTimes= np.linspace(np.log10(minimumTimeDelay), 3, 1e6)
       
-    if trueHubble | ( differentHalo is not None) :
+    if trueDistribution | ( differentHalo is not None) :
 
         interpolatedProbClass = CubicSpline( finalMergedPDFdict['x'], \
                                              finalMergedPDFdict['y'])
 
         interpolatedProb = interpolatedProbClass( interpolateToTheseTimes)
     else:
-        theta = np.array([0.7, 0.5, -1.75] )
-        interpolatedCumSum = hubbleInterpolaterClass.predictPDF( interpolateToTheseTimes, theta )
+        theta = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., \
+                     'OmegaL':0.7, 'zLens':0.5, 'densityProfile':-1.75}
+        interpolatedCumSum = \
+          hubbleInterpolaterClass.predictPDF( interpolateToTheseTimes, theta )
         interpolatedProb = undoCumSum( interpolatedCumSum)
       
       
@@ -306,7 +307,7 @@ def selectRandomSampleOfTimeDelays( nSamples, hubbleParameter, \
                     
     dX = (x[1] - x[0])
     xcentres = (x[1:] + x[:-1])/2.
-    if trueHubble:
+    if trueDistribution:
         xcentres += 0.0404
         
     error = np.sqrt(y*nSamples)/nSamples
@@ -364,7 +365,9 @@ def undoCumSum(cumulative):
 def reportParameters( samples ):
     for i in range(samples.shape[1]):
         print("Assuming Gaussian Posterior: ", norm.fit(samples[:,i]))
-        
+
+
+
 if __name__ == '__main__':
     #plotCornerPlot()
     
