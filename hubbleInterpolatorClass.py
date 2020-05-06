@@ -13,37 +13,45 @@ from sklearn.gaussian_process.kernels import  WhiteKernel
 from sklearn.gaussian_process.kernels import  Matern
 from sklearn.gaussian_process.kernels import   ExpSineSquared
 import time
+from scipy.interpolate import LinearNDInterpolator
+from sklearn.linear_model import LinearRegression
+
+
 class hubbleInterpolator:
     '''
     The idea is to model the PDF and interpolate between source
     planes
     '''
 
-    def __init__( self, nPrincipalComponents=6, minimumTimeDelay=-3., \
-                      nSubSamples=100, inputFeaturesToTrain=None):
+    def __init__( self, nPrincipalComponents=6, minimumTimeDelay=0.001):
         '''
         inputTrainFeatures: a list of the cosmology keys to train over
         '''
+
         
-        self.logMinimumTimeDelay = np.log10(np.max([minimumTimeDelay, 0.1]))
+        self.logMinimumTimeDelay = np.log10(np.max([minimumTimeDelay, 0.001]))
         self.nPrincipalComponents = nPrincipalComponents
 
         # if i dont want to train all the cosmologies
-        self.inputFeaturesToTrain = inputFeaturesToTrain
+
         #if so i need a defaul cosmology
         self.fiducialCosmology = \
           {'H0':70., 'OmegaM':0.3, 'OmegaL':0.7, 'OmegaK':0.}
             
         #How to split up the trianing sample to speed it up
-        self.nSubSamples = nSubSamples
- 
+
+        self.allDistributionsPklFile = \
+          "../output/CDM/selectionFunction/"+\
+          "sparselyPopulatedParamSpace.pkl"
+          
     def getTrainingData( self, pklFile = 'exactPDFpickles/trainingData.pkl' ):
         '''
         Import all the json files from a given lens redshift
+        Train only the fiducial cosmology and then interpolate a shift
+        for the cosmology
+
         '''
-        
-        self.hubbleParameters = \
-          np.linspace(60,80,21)
+      
 
         if pklFile is not None:
             if os.path.isfile( pklFile):
@@ -58,37 +66,24 @@ class hubbleInterpolator:
 
         self.pdfArray = None
 
-        rGrid = getDensity.getRadGrid()
-
-        allDistributionsPklFile = \
-          "../output/CDM/selectionFunction/"+\
-          "sparselyPopulatedParamSpace.pkl"
-          
-        allDistributions = pkl.load(open(allDistributionsPklFile,'rb'))
-
-        if self.inputFeaturesToTrain is None:
-            cosmoKeys =  allDistributions[0]['cosmology'].keys()
-        else:
-            cosmoKeys = self.inputFeaturesToTrain
-
-        notTrainTheseFeatures = \
-          [ i for i in allDistributions[0]['cosmology'].keys() \
-            if i not in cosmoKeys ]
+     
         
-        print("Training over %i keys" % len(cosmoKeys))
+        allDistributions = pkl.load(open(self.allDistributionsPklFile,'rb'))
+
+        cosmoKeys =  allDistributions[0]['cosmology'].keys()
         
-        featureDtype = [ (i, float) for i in cosmoKeys]
-        featureDtype.append( ('zLens',float) )
-        featureDtype.append( ('densityProfile', float))
+
+        featureDtype = [( ('zLens',float) ), ('densityProfile', float) ]
+                            
         features = np.array([], dtype=featureDtype)
         self.nFeatures = len(features.dtype)
 
         for finalMergedPDFdict in allDistributions:
-            #Skip over those sampels that i am not training
+          
             doNotTrainThisSample =  \
               np.any(np.array([self.fiducialCosmology[iCosmoKey] != \
               finalMergedPDFdict['cosmology'][iCosmoKey] \
-              for iCosmoKey in notTrainTheseFeatures]))
+              for iCosmoKey in cosmoKeys]))
 
             if doNotTrainThisSample:
                 continue
@@ -105,6 +100,7 @@ class hubbleInterpolator:
               finalMergedPDFdict['x'][ finalMergedPDFdict['x'] > \
                                            self.logMinimumTimeDelay]
 
+          
             finalMergedPDFdict['y'] = \
               np.cumsum(finalMergedPDFdict['y'])/\
               np.sum(finalMergedPDFdict['y'])
@@ -116,22 +112,20 @@ class hubbleInterpolator:
                   np.vstack((self.pdfArray, finalMergedPDFdict['y']))
 
             densityProfile = \
-              getDensity.getDensityProfileIndex(fileName, rGrid=rGrid)[0]
+              getDensity.getDensityProfileIndex(fileName)[0]
 
-            allPars = [ finalMergedPDFdict['cosmology'][i] for i in cosmoKeys]
-            allPars.append(zLens)
-            allPars.append(densityProfile)
+            allPars = [ zLens, densityProfile]
 
             iFeature = np.array(allPars, dtype=features.dtype)
 
             #TO do this allPars needs to be a tuple!
-            features = np.append( features, np.array(tuple(allPars), dtype = featureDtype))
+            features = np.append( features, np.array(tuple(allPars), \
+                                dtype = featureDtype))
             
 
 
         self.features = features
-        self.features['H0'] /= 100.
-        #self.features['densityProfile'] *= -0.5
+        
 
         self.timeDelays =  \
           finalMergedPDFdict['x'][ finalMergedPDFdict['x'] > \
@@ -150,7 +144,9 @@ class hubbleInterpolator:
         self.principalComponents = self.pca.transform( self.pdfArray )
 
             
-    def learnPrincipalComponents( self, weight=1.):
+    def learnPrincipalComponents( self, length_scale=1., nu=3./2., \
+                                      noise_level=1e5, alpha=1e-3,\
+                                      maternWeight=1. ):
         '''
         Using a mixture of Gaussian Processes 
         predict the distributions of compoentns
@@ -162,72 +158,96 @@ class hubbleInterpolator:
         #self.learnedGPforPCAcomponent = []
         self.predictor = []
 
-        kernel =  Matern(length_scale=1., nu=3./2.) + \
-          WhiteKernel(noise_level=1e3)
+        kernel =  Matern(length_scale=length_scale, nu=nu)
         
-        #kernel =  ExpSineSquared(length_scale=2)
+        #kernel =  ExpSineSquared(length_scale=1)
         #kernel =  RBF(length_scale=1.) + \
-        #  WhiteKernel(noise_level=1.)
+         # WhiteKernel(noise_level=1.)
 
         self.nPDF = len(self.features)
         self.reshapedFeatures = \
           self.features.view('<f8').reshape((self.nPDF,self.nFeatures))
 
-
-        #Shuffle the features and corresponding principal comp up for the subsampling
-        indexes = np.arange(self.features.shape[0])
-        #np.random.shuffle(indexes)
-        
-        shuffledFeatures = self.reshapedFeatures[indexes]
-        shuffledPrincipalComponents = self.principalComponents[indexes]
         
         for i in range(self.nPrincipalComponents):
-            #it is taking too long to train all so split in to subsamples
-            #Max a subsample can be is 8250 as this too 500seconds to train
-            subSamples =  \
-              (np.linspace(0., 1., self.nSubSamples+1)*
-              len(shuffledPrincipalComponents[:,i])).astype(int)
-            
-            if subSamples[1] > 8250:
-                raise ValueError("The subsamples are too large (%i)" \
-                                     % subSamples[1])
 
-            gaussianProcessSubsamples = []
+            gaussProcess = \
+              GaussianProcessRegressor( alpha=alpha, kernel=kernel,\
+                                            n_restarts_optimizer=10)
 
-            
-            for iSubSample in np.arange(self.nSubSamples):
-                print("Principal Component %i/%i, SubSample %i/%i" % \
-                          (i+1, self.nPrincipalComponents, iSubSample+1,self.nSubSamples) )
-                start = time.time()
 
-                gaussProcess = \
-                  GaussianProcessRegressor( alpha=1e-3, kernel=kernel)
-                  
-                startSample = subSamples[iSubSample]
-                endSample = subSamples[iSubSample+1]
-
-                subSampleFeatures = \
-                  shuffledFeatures[startSample:endSample,:]
-                subSamplePrincipalComp = \
-                  shuffledPrincipalComponents[startSample:endSample,i]
-                  
-                gaussProcess.fit(subSampleFeatures, subSamplePrincipalComp)
-
-                finish = time.time()
-                print("Difference in time is %i" % (finish-start))
-                gaussianProcessSubsamples.append(gaussProcess)
                 
-            self.predictor.append(gaussianProcessSubsamples)
-            
-            #cubicSpline = CubicSpline(self.hubbleParameters, self.principalComponents[:,i])
-            #self.cubicSplineInterpolator.append(cubicSpline)
+            gaussProcess.fit(self.reshapedFeatures, self.principalComponents[:,i],)
 
-       
+                
+            self.predictor.append(gaussProcess)
 
+
+    def interpolateCosmologyShift( self ):
+
+        #I need points and values, points are a list of ndarrays of
+        #the cosmology
+
+        #Values will be the difference in the median of the distribution which will shift linearly with the cosmology
         
+        #get the pickle file
+        allDistributions = pkl.load(open(self.allDistributionsPklFile,'rb'))
+
+        values = np.array([])
+
+        cosmoKeys = self.fiducialCosmology.keys()
+        points = None
+        defaultFileName = None
+        
+        for iDistribution in allDistributions:
+
             
-        #print("log likelihood of predictor is %0.3f" %\
-        #          self.getGaussProcessLogLike())
+            fileName = iDistribution['fileNames'][0]
+            
+            if defaultFileName is None:
+                #assume cosmology shift is not dependent on the halo
+                defaultFileName = fileName
+
+            if defaultFileName != fileName:
+                continue
+            zLensStr = fileName.split('/')[-2]
+            zLens = np.float(zLensStr.split('_')[1])
+            
+            densityProfile = \
+              getDensity.getDensityProfileIndex(fileName)[0]
+
+            
+            defaultDistributionIndex = \
+              ( self.features['densityProfile'] == densityProfile ) &\
+              ( self.features['zLens'] == zLens )
+
+            defaulfDistribution = \
+              self.pdfArray[ defaultDistributionIndex,:][0]
+
+            newCosmoDist = iDistribution['y'][ iDistribution['x'] > \
+                                       self.logMinimumTimeDelay]
+            
+            newCosmoDistCumSum = np.cumsum(newCosmoDist)/np.sum(newCosmoDist)
+            distributionShift = \
+              np.interp( 0.5, newCosmoDistCumSum, self.timeDelays) - \
+              np.interp( 0.5, defaulfDistribution, self.timeDelays)
+
+            
+            values = np.append(values, distributionShift)
+            iPoint = \
+              np.array([ iDistribution['cosmology'][i] \
+                             for i in cosmoKeys])
+            iPoint[0] /= 100.
+            if points is None:
+                points = iPoint
+            else:
+                points = np.vstack((points, iPoint))
+
+                
+        
+        self.interpolatorFunction = LinearRegression()
+        self.interpolatorFunction.fit(points, values)
+
 
     def getTimeDelayModel( self, modelFile=None ):
         '''
@@ -239,11 +259,22 @@ class hubbleInterpolator:
             modelFile = 'pickles/hubbleInterpolatorModel.pkl'
 
         self.extractPrincipalComponents()
-        if os.path.isfile(modelFile):
-            self.predictor = pkl.load(open(modelFile, 'rb'))
+        #if os.path.isfile(modelFile):
+        #    self.predictor = pkl.load(open(modelFile, 'rb'))
+        #else:
+        self.learnPrincipalComponents()
+        #    pkl.dump( self.predictor, open(modelFile, 'wb'))
+
+        interpolatorFunction = 'pickles/cosmoInterpolator.pkl'
+        if os.path.isfile( interpolatorFunction ):
+            self.interpolatorFunction = \
+              pkl.load(open(interpolatorFunction,'rb'))
         else:
-            self.learnPrincipalComponents()
-            pkl.dump( self.predictor, open(modelFile, 'wb'))
+            self.interpolateCosmologyShift()
+
+            pkl.dump(self.interpolatorFunction, \
+                        open(interpolatorFunction, 'wb'))
+
 
     def getGaussProcessLogLike( self, theta=None ):
 
@@ -254,39 +285,44 @@ class hubbleInterpolator:
             
         return logLike
     
-    def predictPDF( self, timeDelays, inputFeatureDict ):
+    def predictCDF( self, timeDelays, inputFeatureDict ):
         '''
         For now compare to the trained data
         '''
 
         inputFeatures = \
-          np.array([ inputFeatureDict[i] \
-                         for i in self.features.dtype.names])
+          np.array([ inputFeatureDict['zLens'], inputFeatureDict['densityProfile']])
         
         predictedComponents = \
-          np.zeros((self.nPrincipalComponents, self.nSubSamples))
+          np.zeros(self.nPrincipalComponents)
 
         
         for iComponent in range(self.nPrincipalComponents):
             #there are now many preditors for the subsamples
-            for iSubPredictor in np.arange(self.nSubSamples):
-                #So the predictor for this subsample is
-                predictor = self.predictor[iComponent][iSubPredictor]
+            #So the predictor for this subsample is
+            predictor = self.predictor[iComponent]
+
+            features = inputFeatures.reshape(1,-1)
                 
-                predictedComponents[iComponent, iSubPredictor] = \
-                  predictor.predict(inputFeatures.reshape(1,-1))
+            predictedComponents[iComponent] = \
+                  predictor.predict(features)
 
         self.predictedComponents = predictedComponents
-        estimatedComponents = \
-          np.median(self.predictedComponents, axis=1)
           
         predictedTransform = \
-          self.pca.inverse_transform( estimatedComponents )
-
-        #Just interpolate the x range for plotting
-        pdfInterpolator = \
-          CubicSpline( self.timeDelays, predictedTransform)
+          self.pca.inverse_transform( predictedComponents )
           
+        interpolateThisCosmology = \
+          np.array([ inputFeatureDict[i] for i in self.fiducialCosmology.keys()])
+          
+        predictedCosmoShift = \
+          self.interpolatorFunction.predict(interpolateThisCosmology.reshape(1,-1))
+        print(interpolateThisCosmology)
+        print(predictedCosmoShift)  
+        #Just interpolate the x range for plotting
+        pdfInterpolator =    \
+          CubicSpline( self.timeDelays+predictedCosmoShift, predictedTransform)
+        
         predicted =   pdfInterpolator(timeDelays)
 
         #if np.any(predicted < -0.1):
@@ -294,7 +330,7 @@ class hubbleInterpolator:
             #raise ValueError("Predicted probabilites negative")
         
         predicted[ predicted< 0] = 0
-        
+
         return predicted
 
     def plotPredictedPDF( self, inputFeatures):
@@ -305,7 +341,7 @@ class hubbleInterpolator:
 
             
             predictedTransform = \
-              self.predictPDF( np.linspace(-2, 3, 100), iFeature )
+              self.predictCDF( np.linspace(-2, 3, 100), iFeature )
             
 
             plt.plot( np.linspace(-2, 3, 100), predictedTransform, \
