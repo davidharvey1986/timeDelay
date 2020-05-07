@@ -15,7 +15,7 @@ from sklearn.gaussian_process.kernels import   ExpSineSquared
 import time
 from scipy.interpolate import LinearNDInterpolator
 from sklearn.linear_model import LinearRegression
-
+from scipy.ndimage import gaussian_filter as gauss
 
 class hubbleInterpolator:
     '''
@@ -284,7 +284,7 @@ class hubbleInterpolator:
             pkl.dump(self.interpolatorFunction, \
                         open(interpolatorFunction, 'wb'))
         self.nFreeParameters = len(self.fiducialCosmology.keys())+\
-          len(self.features.dtype) +2
+          len(self.features.dtype) + 1
         #+2 for the widht of the distributions
 
     def getGaussProcessLogLike( self, theta=None ):
@@ -377,7 +377,13 @@ class hubbleInterpolator:
         
         predicted[ predicted< 0] = 0
 
-        return predicted
+        #account for distriunbtion of models
+        dX = timeDelays[1] - timeDelays[0]
+        #Ensure the same dt 
+        variancePixels = inputFeatureDict['variance']/dX
+        predictedConvolved = gauss(predicted, variancePixels)
+
+        return predictedConvolved
 
     def predictedCDFofDistribution( self, timeDelays, inputFeatureDict ):
         '''

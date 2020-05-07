@@ -26,11 +26,11 @@ def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
     labels = \
       [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',\
            r'$\alpha$', r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$',r'$\Sigma_\alpha$',r'$\Sigma_z$' ]
-    ndim = 8
+    ndim = 7
     figcorner, axarr = plt.subplots(ndim,ndim,figsize=(15,15))
     color = ['blue','red','green','cyan']
     
-    for icolor, sampleSize in enumerate([100000]):
+    for icolor, sampleSize in enumerate([1000]):
         samples = getMCMCchainForSamplesSize(sampleSize, 10,  None, trueDistribution=trueDistribution)
         
         if (not trueDistribution):
@@ -41,7 +41,7 @@ def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
                 i.plot([0.7,.7],[-2,10],'k--')
 
         nsamples = samples.shape[0]
-                    
+                   
         corner.corner(samples , \
                       bins=20, smooth=True, \
                       plot_datapoints=False,
@@ -56,12 +56,12 @@ def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
         
     if  trueDistribution:
         reportParameters(samples)
-        axarr[1,1].set_xlim( 0.45, 0.53)
-        axarr[2,2].set_xlim( -1.9, -1.6)
-        axarr[1,0].set_ylim( 0.44, 0.53)
-        axarr[2,0].set_ylim( -1.9, -1.6)
-        axarr[2,1].set_ylim( -1.9, -1.6)
-        axarr[2,1].set_xlim( 0.44, 0.53)
+        #axarr[1,1].set_xlim( 0.45, 0.53)
+        #axarr[2,2].set_xlim( -1.9, -1.6)
+        #axarr[1,0].set_ylim( 0.44, 0.53)
+        #axarr[2,0].set_ylim( -1.9, -1.6)
+        #axarr[2,1].set_ylim( -1.9, -1.6)
+        #axarr[2,1].set_xlim( 0.44, 0.53)
 
     else:
         axarr[1,1].set_xlim( 0.3, 0.58)
@@ -171,7 +171,7 @@ def getPredictedConstraints(nIterations = 1,\
 
 
     #Loop through each sample size
-    for i, iSampleSize in enumerate([100000]):
+    for i, iSampleSize in enumerate([1000]):
         print("Sample Size: %i" % (iSampleSize))
         
         samples = \
@@ -287,7 +287,7 @@ def selectRandomSampleOfTimeDelays( nSamples,  \
         interpolatedProb = interpolatedProbClass( interpolateToTheseTimes)
     else:
         theta = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., \
-                     'OmegaL':0.7, 'zLens':0.2, 'densityProfile':-1.8}
+                     'OmegaL':0.7, 'zLens':0.56, 'densityProfile':-1.75}
         interpolatedCumSum = \
           hubbleInterpolaterClass.predictCDF( interpolateToTheseTimes, \
                                                   theta )
@@ -306,7 +306,7 @@ def selectRandomSampleOfTimeDelays( nSamples,  \
     
     bins = np.max([20, np.int(nSamples/100)])
     y, x = np.histogram(logTimeDelays, \
-                    bins=np.linspace(-1,3,100), density=True)
+                    bins=np.linspace(-1,4,1000), density=True)
                     
     dX = (x[1] - x[0])
     xcentres = (x[1:] + x[:-1])/2.
@@ -320,23 +320,13 @@ def selectRandomSampleOfTimeDelays( nSamples,  \
     #cumsumYError = np.ones(len(y))/nSamples/2.
     xcentres += dX/2.
 
-    theta = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., \
-                     'OmegaL':0.7, 'zLens':0.4, 'densityProfile':-1.75,\
-                 'densityProfileWidth':0.1, 'zLensWidth':0.1}
-    start = time.time()
-    interpolatedCumSum = \
-          hubbleInterpolaterClass.predictedCDFofDistribution( xcentres, theta )
-    lap = time.time()
-    print('distriubtion took %0.5f s' % (lap-start))
-    plt.plot(xcentres, interpolatedCumSum,'r')
-    theta = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., \
-            'OmegaL':0.7, 'zLens':0.4, 'densityProfile':-1.75,\
-                 'densityProfileWidth':0.1, 'zLensWidth':0.1}
-
+    theta = {'H0':0.65, 'OmegaM':0.3, 'OmegaK':0., \
+                     'OmegaL':0.7, 'zLens':0.55, 'densityProfile':-1.75,\
+                 'variance':0.}
+   
     interpolatedCumSum = \
        hubbleInterpolaterClass.predictCDF( xcentres, theta )
-    finish = time.time()
-    print('individual took %0.5f s' % (finish - lap))
+    
     
     plt.plot(xcentres, interpolatedCumSum,'g')
     plt.plot(xcentres, cumsumY,'b')  
@@ -379,7 +369,7 @@ def getModeAndError( samples ):
     if np.isfinite(error) == False:
         pdb.set_trace()
     errorOnError = np.std(np.array(indivError)) /np.sqrt(len(indivError))
-    return maxLikeMean, error*100
+    return maxLikeMean, error*10
 
 def undoCumSum(cumulative):
     output = [0] * len(cumulative)
