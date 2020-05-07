@@ -63,6 +63,7 @@ def main():
                     hubbleInterpolator.logMinimumTimeDelay]
                     
         truthCumSum = np.cumsum(truth)/np.sum(truth)
+        
         params = iDist['cosmology']
       
         fileName = iDist['fileNames'][0]
@@ -113,7 +114,7 @@ def main():
         #if np.max(np.abs(diff)) > 0.1:
          #   pdb.set_trace()
 
-    axB.plot(hubbleInterpolator.timeDelays, np.sqrt(np.sum(diffArray**2, axis=0)/nSamples))
+    axB.plot(hubbleInterpolator.timeDelays, np.mean(diffArray, axis=0))
     plt.show()
     pdb.set_trace()
 

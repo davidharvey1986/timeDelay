@@ -11,7 +11,7 @@ import fitHubbleParameter as fitHubble
 from scipy.interpolate import CubicSpline
 from scipy.stats import kurtosis
 import corner as corner
-from hubbleInterpolatorClass import *
+import hubbleInterpolatorClass as hubbleModel
 from scipy.stats import norm
 import matplotlib.lines as mlines
 from matplotlib import rcParams
@@ -21,15 +21,16 @@ from scipy.ndimage import gaussian_filter as gauss
 
     
 def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
-                        trueDistribution=False):
+                        trueDistribution=True):
 
     labels = \
-      [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$', r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$' ]
+      [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',\
+           r'$\alpha$', r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$' ]
     ndim = 6
     figcorner, axarr = plt.subplots(ndim,ndim,figsize=(15,15))
     color = ['blue','red','green','cyan']
     
-    for icolor, sampleSize in enumerate([10000]):
+    for icolor, sampleSize in enumerate([100000]):
         samples = getMCMCchainForSamplesSize(sampleSize, 10,  None, trueDistribution=trueDistribution)
         
         if (not trueDistribution):
@@ -103,7 +104,7 @@ def nonPerfectFittingFunction(nComponents=5):
     
 
     sampleSizes, estimates = \
-     getPredictedConstraints(trueDistribution=False)
+     getPredictedConstraints(trueDistribution=True)
     estimates /=inputHubbleParameter/100.
 
     
@@ -145,7 +146,7 @@ def nonPerfectFittingFunction(nComponents=5):
     plt.savefig('../plots/statisticalErrorOnHubble.pdf')
     plt.show()
 
-def getPredictedConstraints(nIterations = 100,\
+def getPredictedConstraints(nIterations = 1,\
                                 nSampleSizes = 11,\
                                 exactIndex=False,\
                                 trueDistribution=False,\
@@ -154,23 +155,23 @@ def getPredictedConstraints(nIterations = 100,\
 
 
 
-    hubbleInterpolaterClass = hubbleInterpolator( minimumTimeDelay=minimumTimeDelay)
+    hubbleInterpolaterClass = \
+      hubbleModel.hubbleInterpolator( minimumTimeDelay=minimumTimeDelay)
+    
     if minimumTimeDelay > 0:
         hubbleInterpolaterClass.getTrainingData(pklFile='picklesMinimumDelay/trainingData.pkl')
     else:
-        hubbleInterpolaterClass.getTrainingData('exactPDFpickles/trainingData.pkl')
+        hubbleInterpolaterClass.getTrainingData('exactPDFpickles/noCosmology.pkl')
 
-
-    hubbleInterpolaterClass.getTimeDelayModel()
-
-
+    hubbleInterpolaterClass.getTimeDelayModel(modelFile='pickles/noCosmology.pkl')
+  
     sampleSizes = 10**np.linspace(2,4,nSampleSizes)
     
     estimates = np.zeros(nSampleSizes)
 
 
     #Loop through each sample size
-    for i, iSampleSize in enumerate([10000]):
+    for i, iSampleSize in enumerate([100000]):
         print("Sample Size: %i" % (iSampleSize))
         
         samples = \
@@ -266,14 +267,15 @@ def selectRandomSampleOfTimeDelays( nSamples,  \
     if trueDistribution:
         pklFileName = \
       '../output/CDM/selectionFunction/'+\
-      'allSelectionFunctionsIndividualLensesAndCosmologies.pkl'
-      
+      'allHalosFiducialCosmology.pkl'
+        finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
+
     if differentHalo is not None:
       pklFileName = \
         '../output/CDM/selectionFunction/SF_%s_%i_lsst.pkl' \
         % (differentHalo, hubbleParameter)
       
-      allFinalMergedPDFdicts = pkl.load(open(pklFileName,'rb'))
+      finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
 
     interpolateToTheseTimes= np.linspace(np.log10(minimumTimeDelay), 3, 1e6)
       
@@ -285,9 +287,10 @@ def selectRandomSampleOfTimeDelays( nSamples,  \
         interpolatedProb = interpolatedProbClass( interpolateToTheseTimes)
     else:
         theta = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., \
-                     'OmegaL':0.7, 'zLens':0.5, 'densityProfile':-1.75}
+                     'OmegaL':0.7, 'zLens':0.2, 'densityProfile':-1.8}
         interpolatedCumSum = \
-          hubbleInterpolaterClass.predictPDF( interpolateToTheseTimes, theta )
+          hubbleInterpolaterClass.predictCDF( interpolateToTheseTimes, \
+                                                  theta )
         interpolatedProb = undoCumSum( interpolatedCumSum)
       
       
@@ -315,9 +318,20 @@ def selectRandomSampleOfTimeDelays( nSamples,  \
     cumsumY = np.cumsum( y )  / np.sum(y)
     cumsumYError = np.sqrt(np.cumsum(error**2)/(np.arange(len(error))+1))
     #cumsumYError = np.ones(len(y))/nSamples/2.
-    xcentres+=dX/2.
+    xcentres += dX/2.
+
+    theta = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., \
+                     'OmegaL':0.7, 'zLens':0.5, 'densityProfile':-1.75}
+    interpolatedCumSum = \
+          hubbleInterpolaterClass.predictCDF( xcentres, theta )
+
+    plt.plot(xcentres, interpolatedCumSum,'r')  
+    plt.plot(xcentres, cumsumY,'b')  
 
 
+
+    
+    pdb.set_trace()
     return {'x':xcentres, 'y':cumsumY,  'error':cumsumYError}
 
 def getModeAndError( samples ):

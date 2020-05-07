@@ -23,7 +23,7 @@ class hubbleInterpolator:
     planes
     '''
 
-    def __init__( self, nPrincipalComponents=6, minimumTimeDelay=0.001):
+    def __init__( self, nPrincipalComponents=9, minimumTimeDelay=0.001):
         '''
         inputTrainFeatures: a list of the cosmology keys to train over
         '''
@@ -60,7 +60,7 @@ class hubbleInterpolator:
                 self.nFeatures = len(self.features.dtype)
                 return
         
-        self.timeDelayDistClasses = []
+
         
 
 
@@ -72,9 +72,10 @@ class hubbleInterpolator:
 
         cosmoKeys =  allDistributions[0]['cosmology'].keys()
         
-
+        
+        
         featureDtype = [( ('zLens',float) ), ('densityProfile', float) ]
-                            
+
         features = np.array([], dtype=featureDtype)
         self.nFeatures = len(features.dtype)
 
@@ -100,7 +101,8 @@ class hubbleInterpolator:
               finalMergedPDFdict['x'][ finalMergedPDFdict['x'] > \
                                            self.logMinimumTimeDelay]
 
-          
+            #By predicting the PDF i will havea  more regular CDF
+            
             finalMergedPDFdict['y'] = \
               np.cumsum(finalMergedPDFdict['y'])/\
               np.sum(finalMergedPDFdict['y'])
@@ -145,8 +147,7 @@ class hubbleInterpolator:
 
             
     def learnPrincipalComponents( self, length_scale=1., nu=3./2., \
-                                      noise_level=1e5, alpha=1e-3,\
-                                      maternWeight=1. ):
+                                      alpha=1e2):
         '''
         Using a mixture of Gaussian Processes 
         predict the distributions of compoentns
@@ -198,7 +199,8 @@ class hubbleInterpolator:
         cosmoKeys = self.fiducialCosmology.keys()
         points = None
         defaultFileName = None
-        
+        featureDtype = [ (i, float) for i in cosmoKeys]
+        self.cosmologyFeatures = np.array([], dtype=featureDtype)
         for iDistribution in allDistributions:
 
             
@@ -221,9 +223,11 @@ class hubbleInterpolator:
               ( self.features['densityProfile'] == densityProfile ) &\
               ( self.features['zLens'] == zLens )
 
-            defaulfDistribution = \
+            defaulfDistributionPDF = \
               self.pdfArray[ defaultDistributionIndex,:][0]
-
+            defaulfDistribution = \
+              np.cumsum(defaulfDistributionPDF)/np.sum(defaulfDistributionPDF)
+              
             newCosmoDist = iDistribution['y'][ iDistribution['x'] > \
                                        self.logMinimumTimeDelay]
             
@@ -242,12 +246,17 @@ class hubbleInterpolator:
                 points = iPoint
             else:
                 points = np.vstack((points, iPoint))
-
                 
+                
+            #TO do this allPars needs to be a tuple!
+
+            self.cosmologyFeatures = \
+              np.append( self.cosmologyFeatures, np.array(tuple(iPoint),dtype = featureDtype))
+
         
         self.interpolatorFunction = LinearRegression()
         self.interpolatorFunction.fit(points, values)
-
+        
 
     def getTimeDelayModel( self, modelFile=None ):
         '''
@@ -259,22 +268,23 @@ class hubbleInterpolator:
             modelFile = 'pickles/hubbleInterpolatorModel.pkl'
 
         self.extractPrincipalComponents()
-        #if os.path.isfile(modelFile):
-        #    self.predictor = pkl.load(open(modelFile, 'rb'))
-        #else:
         self.learnPrincipalComponents()
-        #    pkl.dump( self.predictor, open(modelFile, 'wb'))
 
         interpolatorFunction = 'pickles/cosmoInterpolator.pkl'
+        
         if os.path.isfile( interpolatorFunction ):
             self.interpolatorFunction = \
               pkl.load(open(interpolatorFunction,'rb'))
+            self.cosmologyFeatures = \
+              pkl.load(open('pickles/cosmologyFeatures.pkl','rb'))
         else:
             self.interpolateCosmologyShift()
-
+            pkl.dump(self.cosmologyFeatures, \
+                         open('pickles/cosmologyFeatures.pkl','wb'))
             pkl.dump(self.interpolatorFunction, \
                         open(interpolatorFunction, 'wb'))
-
+        self.nFreeParameters = len(self.fiducialCosmology.keys())+\
+          len(self.features.dtype)                    
 
     def getGaussProcessLogLike( self, theta=None ):
 
@@ -309,19 +319,22 @@ class hubbleInterpolator:
 
         self.predictedComponents = predictedComponents
           
-        predictedTransform = \
+        predictedTransformCDF = \
           self.pca.inverse_transform( predictedComponents )
+
+        #predictedTransformCDF = \
+        #  np.cumsum(  predictedTransformPDF)/np.sum(predictedTransformPDF)
           
         interpolateThisCosmology = \
           np.array([ inputFeatureDict[i] for i in self.fiducialCosmology.keys()])
-          
+        cal = 0.
         predictedCosmoShift = \
-          self.interpolatorFunction.predict(interpolateThisCosmology.reshape(1,-1))
-        print(interpolateThisCosmology)
-        print(predictedCosmoShift)  
+          self.interpolatorFunction.predict(interpolateThisCosmology.reshape(1,-1)) + cal
+          
+        
         #Just interpolate the x range for plotting
         pdfInterpolator =    \
-          CubicSpline( self.timeDelays+predictedCosmoShift, predictedTransform)
+          CubicSpline( self.timeDelays+predictedCosmoShift, predictedTransformCDF)
         
         predicted =   pdfInterpolator(timeDelays)
 

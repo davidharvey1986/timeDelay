@@ -17,15 +17,17 @@ from matplotlib import colors as mcolors
 def main(pklFile='pickles/fitDataToModelPoisson.pkl'):
         
 
-    ndim = 3
+    ndim = 6
     figcorner, axarr = plt.subplots(ndim,ndim,figsize=(8,8))
 
     selectedTimeDelays = getObservations()
 
     hubbleInterpolaterClass = hubbleInterpolator()
-    hubbleInterpolaterClass.getTrainingData('pickles/dataTrainingData.pkl')
-    hubbleInterpolaterClass.extractPrincipalComponents()
-    hubbleInterpolaterClass.learnPrincipalComponents()
+
+    hubbleInterpolaterClass.getTrainingData('exactPDFpickles/noCosmology.pkl')
+        
+    hubbleInterpolaterClass.getTimeDelayModel(modelFile='pickles/noCosmology.pkl')
+    
 
     if not os.path.isfile( pklFile ):
         fitHubbleClass = \
@@ -40,12 +42,12 @@ def main(pklFile='pickles/fitDataToModelPoisson.pkl'):
 
     parRange = [[0.55,0.8],[0.45,0.6],[-2.,-1.6]]
     labels = \
-      [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$']
-
+      [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$', \
+           r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$' ]
     nsamples = samples.shape[0]
     #plotMockedData( figcorner)
     
-    corner.corner(samples, range=parRange, levels=[0.68], bins=20,\
+    corner.corner(samples,  levels=[0.68], bins=20,\
                     plot_datapoints=False, labels=labels, fig=figcorner,\
                       weights=np.ones(nsamples)/nsamples, color='black', \
                       hist_kwargs={'linewidth':3.},\

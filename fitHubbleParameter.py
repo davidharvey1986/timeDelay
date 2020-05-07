@@ -31,7 +31,7 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     thetaDict = {'H0':theta[0], 'zLens':theta[1], 'densityProfile':theta[2], \
                      'OmegaM':theta[3], 'OmegaL':theta[4], 'OmegaK':theta[5]}
 
-    cumsumYtheory = hubbleInterpolator.predictPDF( xTrue, thetaDict )
+    cumsumYtheory = hubbleInterpolator.predictCDF( xTrue, thetaDict )
     #cumsumYtheory /= np.max(cumsumYtheory)
     #trueTheta=np.array([0.7,0.4,-1.75])   
     #trueTheory = hubbleInterpolator.predictPDF( xTrue, trueTheta )
@@ -41,12 +41,17 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
 
     #if np.any(yTheory < 0):
      #   return -np.inf
-
-    for iThetaKey in thetaDict.keys():
+   
+    for iThetaKey in hubbleInterpolator.features.dtype.names:
         if (thetaDict[iThetaKey] < np.min(hubbleInterpolator.features[iThetaKey])) | \
           (thetaDict[iThetaKey] > np.max(hubbleInterpolator.features[iThetaKey])):
-          
-          return -np.inf
+            return -np.inf
+
+    for iCosmoKey in hubbleInterpolator.cosmologyFeatures.dtype.names:
+        if (thetaDict[iCosmoKey] < np.min(hubbleInterpolator.cosmologyFeatures[iCosmoKey])) | \
+          (thetaDict[iCosmoKey] > np.max(hubbleInterpolator.cosmologyFeatures[iCosmoKey])):
+            return -np.inf
+
     '''
     if (theta[0] < 0.65) | (theta[0] > 0.75):
         return -np.inf
@@ -106,7 +111,7 @@ class fitHubbleParameterClass:
   
         nwalkers = 20
 
-        ndim = len(self.hubbleInterpolator.features.dtype)
+        ndim = self.hubbleInterpolator.nFreeParameters
         burn_len=500
         chain_len=1000
         pos0 = np.random.rand(nwalkers,ndim)

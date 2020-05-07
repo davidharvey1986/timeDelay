@@ -30,7 +30,7 @@ class timeDelayDistribution:
                      cosmology=None,\
                       zLens=None):
                       
-        self.cosmology={'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., \
+        self.cosmology={'H0':70, 'OmegaM':0.3, 'OmegaK':0., \
                                 'OmegaL':0.7}
         for i in cosmology.keys():
             self.cosmology[i] = cosmology[i]
@@ -132,7 +132,7 @@ class singleSourcePlaneDistribution(timeDelayDistribution):
                             cosmology=None,\
                             timeDelayBins=None ):
                             
-        self.cosmology={'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., \
+        self.cosmology={'H0':70., 'OmegaM':0.3, 'OmegaK':0., \
                                 'OmegaL':0.7}
 
         for i in cosmology.keys():

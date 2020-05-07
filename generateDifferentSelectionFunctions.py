@@ -107,44 +107,22 @@ def selectionFunctionIndividualLensesForData( ):
                                 
             pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
             
-def selectFunctionForAllLenses(useLsst=None):
+def selectFunctionForAllLenses():
     
     
     dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
              
     allFiles = glob.glob(dirD+'/CDM/z*/B*_cluster_0_*.json')
     
-
-    hubbleParameters = \
-      np.linspace(60,80,21)
    
 
-    for hubbleParameter in hubbleParameters:
-        if useLsst is not None:
-        
-            pklFileName = \
-              '../output/CDM/selectionFunction/SF_%i_lsst.pkl' \
-              % (hubbleParameter )
-            finalMergedPDFdict = \
-              selectionFunction(allFiles, \
-                            newHubbleParameter=hubbleParameter,\
-                                useLsst = useLsst)
+    pklFileName = \
+          '../output/CDM/selectionFunction/allHalosFiducialCosmology.pkl' \
+
+    finalMergedPDFdict = \
+         selectionFunction(allFiles, useLsst = True)
                                                                 
-            pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
-        else:
-            zMed = np.linspace(1.5, 2.5, 11)
-            for izMed in zMed:
-                pklFileName = \
-                '../output/CDM/selectionFunction/SF_%i_%0.2flsst.pkl' \
-                % (hubbleParameter, zMed )
-        
-                finalMergedPDFdict = \
-                  selectionFunction(allFiles, \
-                                    newHubbleParameter=hubbleParameter,\
-                                    medianRedshift=izMed,\
-                                    useLsst = False)
-                                
-                pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
+    pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
 
     
 
@@ -169,7 +147,7 @@ def selectionFunction( listOfJsonFiles, cosmology=None, \
     matchToThisXaxis = np.linspace(-3,4,100)
     zLenses = np.array([0.20, 0.25, 0.37, 0.50, 0.74, 1.0])
     if cosmology is None:
-        cosmology={'h':0.7, 'OmegaM':0.3, 'OmegaK':0., 'OmegaL':0.7}
+        cosmology={'H0':70., 'OmegaM':0.3, 'OmegaK':0., 'OmegaL':0.7}
     for iJsonFile in listOfJsonFiles:
          cluster = \
            timeDelayDistribution( iJsonFile, cosmology=cosmology, \
@@ -271,6 +249,6 @@ def getSourceRedshiftWeight( z, zMed=1.0 ):
 
 if __name__ == "__main__":
     #selectionFunctionEnsembleHalos()
-#    selectFunctionForAllLenses()
-    selectionFunctionIndividualLenses()
+    selectFunctionForAllLenses()
+#    selectionFunctionIndividualLenses()
     #selectionFunctionIndividualLensesForData()
