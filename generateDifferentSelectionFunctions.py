@@ -9,6 +9,7 @@ from scipy.stats import lognorm
 import time
 import lsstSelectionFunction as lsstSelect
 from termcolor import colored
+import sys
 
 def selectionFunctionEnsembleHalos():
     dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
@@ -51,7 +52,7 @@ def selectionFunctionIndividualLenses(  ):
     omegaL = np.linspace(0.65,0.75,nOmegaL)
     totalTimes = nHubble*nOmegaM*nOmegaK*nOmegaL*len(allFiles)
     
-    pklFileName = "../output/CDM/selectionFunction/sparselyPopulatedParamSpace.pkl"
+    pklFileName = "../output/CDM/selectionFunction/test.pkl"
     listOfSelectionFunctions = []
     i = 0
     for iHubbleParameter in hubbleParameters:
@@ -71,14 +72,15 @@ def selectionFunctionIndividualLenses(  ):
                                 cosmology=cosmology,\
                                 useLsst = True)
                         listOfSelectionFunctions.append(finalMergedPDFdict)
+
                     timeEnd = time.time()
                     timediff = (timeEnd - timeStart)/len(allFiles)
                     print(colored("Time left finish time %0.2f hours" % \
                                     (timediff*(totalTimes-i)/60./60.),'red'))
 
-    pkl.dump(listOfSelectionFunctions,open(pklFileName,'wb'), 2)
             
-  
+    pkl.dump(listOfSelectionFunctions,open(pklFileName,'wb'), 2)
+
 
        
 def selectionFunctionIndividualLensesForData( ):
@@ -249,6 +251,6 @@ def getSourceRedshiftWeight( z, zMed=1.0 ):
 
 if __name__ == "__main__":
     #selectionFunctionEnsembleHalos()
-    selectFunctionForAllLenses()
-#    selectionFunctionIndividualLenses()
+    #selectFunctionForAllLenses()
+    selectionFunctionIndividualLenses()
     #selectionFunctionIndividualLensesForData()

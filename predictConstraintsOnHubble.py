@@ -18,15 +18,15 @@ from matplotlib import rcParams
 rcParams["font.size"] = 16
 from scipy.ndimage import gaussian_filter as gauss
 
-
+import time
     
 def plotCornerPlot( sampleSize=1000,samplesPerIteration = 30000,
                         trueDistribution=True):
 
     labels = \
       [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',\
-           r'$\alpha$', r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$' ]
-    ndim = 6
+           r'$\alpha$', r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$',r'$\Sigma_\alpha$',r'$\Sigma_z$' ]
+    ndim = 8
     figcorner, axarr = plt.subplots(ndim,ndim,figsize=(15,15))
     color = ['blue','red','green','cyan']
     
@@ -306,7 +306,7 @@ def selectRandomSampleOfTimeDelays( nSamples,  \
     
     bins = np.max([20, np.int(nSamples/100)])
     y, x = np.histogram(logTimeDelays, \
-                    bins=np.linspace(-1,3,bins), density=True)
+                    bins=np.linspace(-1,3,100), density=True)
                     
     dX = (x[1] - x[0])
     xcentres = (x[1:] + x[:-1])/2.
@@ -321,11 +321,24 @@ def selectRandomSampleOfTimeDelays( nSamples,  \
     xcentres += dX/2.
 
     theta = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., \
-                     'OmegaL':0.7, 'zLens':0.5, 'densityProfile':-1.75}
+                     'OmegaL':0.7, 'zLens':0.4, 'densityProfile':-1.75,\
+                 'densityProfileWidth':0.1, 'zLensWidth':0.1}
+    start = time.time()
     interpolatedCumSum = \
-          hubbleInterpolaterClass.predictCDF( xcentres, theta )
+          hubbleInterpolaterClass.predictedCDFofDistribution( xcentres, theta )
+    lap = time.time()
+    print('distriubtion took %0.5f s' % (lap-start))
+    plt.plot(xcentres, interpolatedCumSum,'r')
+    theta = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., \
+            'OmegaL':0.7, 'zLens':0.4, 'densityProfile':-1.75,\
+                 'densityProfileWidth':0.1, 'zLensWidth':0.1}
 
-    plt.plot(xcentres, interpolatedCumSum,'r')  
+    interpolatedCumSum = \
+       hubbleInterpolaterClass.predictCDF( xcentres, theta )
+    finish = time.time()
+    print('individual took %0.5f s' % (finish - lap))
+    
+    plt.plot(xcentres, interpolatedCumSum,'g')
     plt.plot(xcentres, cumsumY,'b')  
 
 
@@ -383,7 +396,7 @@ def reportParameters( samples ):
 
 
 if __name__ == '__main__':
-    #plotCornerPlot()
+    plotCornerPlot()
     
     nonPerfectFittingFunction()
 ##

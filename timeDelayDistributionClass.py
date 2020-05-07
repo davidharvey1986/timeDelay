@@ -191,7 +191,7 @@ class singleSourcePlaneDistribution(timeDelayDistribution):
             for i in cosmology.keys():
                 inputCosmology[i] = cosmology[i]
             
-        
+
         distanceClass = \
           Distances.Distances(  self.zLens, self.data["z"], \
                         inputCosmology['OmegaM'], inputCosmology['OmegaK'], \

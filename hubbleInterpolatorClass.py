@@ -146,8 +146,8 @@ class hubbleInterpolator:
         self.principalComponents = self.pca.transform( self.pdfArray )
 
             
-    def learnPrincipalComponents( self, length_scale=1., nu=3./2., \
-                                      alpha=1e2):
+    def learnPrincipalComponents( self, length_scale=1., nu=1./2., \
+                                      alpha=1e0):
         '''
         Using a mixture of Gaussian Processes 
         predict the distributions of compoentns
@@ -284,7 +284,8 @@ class hubbleInterpolator:
             pkl.dump(self.interpolatorFunction, \
                         open(interpolatorFunction, 'wb'))
         self.nFreeParameters = len(self.fiducialCosmology.keys())+\
-          len(self.features.dtype)                    
+          len(self.features.dtype) +2
+        #+2 for the widht of the distributions
 
     def getGaussProcessLogLike( self, theta=None ):
 
@@ -299,43 +300,75 @@ class hubbleInterpolator:
         '''
         For now compare to the trained data
         '''
-
-        inputFeatures = \
-          np.array([ inputFeatureDict['zLens'], inputFeatureDict['densityProfile']])
         
-        predictedComponents = \
-          np.zeros(self.nPrincipalComponents)
-
+        #parse the input parameters
         
+
+        if type(inputFeatureDict['zLens']) == np.ndarray:
+            inputFeatures = \
+              np.vstack(( inputFeatureDict['zLens'], \
+                            inputFeatureDict['densityProfile']))
+            predictedComponents = \
+              np.zeros((self.nPrincipalComponents,\
+                    len(inputFeatureDict['zLens'])))
+                            
+            features = inputFeatures.T
+                        
+            #Never varies for input    so use the first value
+            interpolateThisCosmology = \
+              np.array([ inputFeatureDict[i][0] \
+                    for i in self.fiducialCosmology.keys()])
+        else:
+            inputFeatures = \
+            np.array([ inputFeatureDict['zLens'], \
+                           inputFeatureDict['densityProfile']])
+            features = inputFeatures.reshape(1,-1)
+
+            predictedComponents = \
+              np.zeros(self.nPrincipalComponents)
+              
+            interpolateThisCosmology = \
+              np.array([ inputFeatureDict[i] \
+                    for i in self.fiducialCosmology.keys()])
+                    
         for iComponent in range(self.nPrincipalComponents):
             #there are now many preditors for the subsamples
             #So the predictor for this subsample is
             predictor = self.predictor[iComponent]
 
-            features = inputFeatures.reshape(1,-1)
                 
             predictedComponents[iComponent] = \
                   predictor.predict(features)
 
         self.predictedComponents = predictedComponents
-          
-        predictedTransformCDF = \
-          self.pca.inverse_transform( predictedComponents )
 
+       
+        
         #predictedTransformCDF = \
         #  np.cumsum(  predictedTransformPDF)/np.sum(predictedTransformPDF)
           
-        interpolateThisCosmology = \
-          np.array([ inputFeatureDict[i] for i in self.fiducialCosmology.keys()])
-        cal = 0.
+
+        cal = 0
         predictedCosmoShift = \
           self.interpolatorFunction.predict(interpolateThisCosmology.reshape(1,-1)) + cal
           
-        
+
         #Just interpolate the x range for plotting
-        pdfInterpolator =    \
-          CubicSpline( self.timeDelays+predictedCosmoShift, predictedTransformCDF)
+        if type(inputFeatureDict['zLens']) == np.ndarray:
+            predictedTransformCDF =  \
+              self.pca.inverse_transform( predictedComponents.T)
+            pdfInterpolator = \
+              CubicSpline( self.timeDelays+predictedCosmoShift, \
+                               predictedTransformCDF, axis=1)
+                               
+        else:
+            predictedTransformCDF =  \
+               self.pca.inverse_transform( predictedComponents)
+            pdfInterpolator = \
+              CubicSpline( self.timeDelays+predictedCosmoShift, \
+                               predictedTransformCDF)
         
+            
         predicted =   pdfInterpolator(timeDelays)
 
         #if np.any(predicted < -0.1):
@@ -346,6 +379,35 @@ class hubbleInterpolator:
 
         return predicted
 
+    def predictedCDFofDistribution( self, timeDelays, inputFeatureDict ):
+        '''
+        An individual estimator seems good, but 
+        perhaps i should be predicting a mean and distriubtion
+        in estimates
+
+        '''
+        nIt = 10
+        alphaList = \
+          np.random.randn(nIt)*inputFeatureDict['densityProfileWidth']+\
+          inputFeatureDict['densityProfile']
+        zList = \
+          np.random.randn(nIt)*inputFeatureDict['zLensWidth']+\
+          inputFeatureDict['zLens']
+        
+        inputArray = {}
+        
+        for i in inputFeatureDict.keys():
+            inputArray[i] = np.zeros(nIt)+inputFeatureDict[i]
+            
+        inputArray['densityProfile'] = alphaList
+        inputArray['zLens'] = zList
+        cdfArray = self.predictCDF( timeDelays, inputArray)
+
+        for iIt in np.arange(nIt):
+            plt.plot(timeDelays,  cdfArray[iIt, :], color='grey', alpha=0.2)
+
+        return np.mean(cdfArray, axis=0)
+    
     def plotPredictedPDF( self, inputFeatures):
         
         #plot the now predicted PDF

@@ -10,7 +10,7 @@ from matplotlib import rc
 import ipdb as pdb
 import os
 from scipy.interpolate import CubicSpline
-
+from copy import deepcopy as cp
 import plotAsFunctionOfDensityProfile as getDensity
 from matplotlib import gridspec 
 
@@ -158,5 +158,41 @@ def getBestParsForGPR():
                     
     
     pdb.set_trace()
+
+def plotAllDefaultCosmologies():
+
+    hubbleInterpolator = \
+      hubbleModel.hubbleInterpolator( )
+      
+    hubbleInterpolator.getTrainingData('exactPDFpickles/noCosmology.pkl')
+
+    hubbleInterpolator.getTimeDelayModel(modelFile='pickles/noCosmology.pkl')
+    for i in np.arange(hubbleInterpolator.pdfArray.shape[0]):
+        plt.plot(hubbleInterpolator.timeDelays, \
+                hubbleInterpolator.pdfArray[i,:], color='grey', alpha=0.5)
+        inputParams = cp(hubbleInterpolator.fiducialCosmology)
+        print(inputParams['H0'])
+        inputParams['H0'] /= 100.
+        inputParams['zLens'] = hubbleInterpolator.features['zLens'][i]
+        inputParams['densityProfile'] = \
+          hubbleInterpolator.features['densityProfile'][i]                                                       
+        predict = \
+          hubbleInterpolator.predictCDF(hubbleInterpolator.timeDelays, inputParams)
+        plt.plot(hubbleInterpolator.timeDelays, predict, color='red', alpha=0.5)
+
+                
+    pklFileName = \
+      '../output/CDM/selectionFunction/'+\
+      'allHalosFiducialCosmology.pkl'
+    finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
+    cumsum = np.cumsum(finalMergedPDFdict['y'])/np.sum(finalMergedPDFdict['y'])
+    plt.plot(finalMergedPDFdict['x'],cumsum, 'b')
+
+    plt.plot(hubbleInterpolator.timeDelays,\
+                np.mean(hubbleInterpolator.pdfArray, axis=0), 'g')
+
+    plt.show()
+                
+    
 if __name__ == '__main__':
-    main()
+    plotAllDefaultCosmologies()

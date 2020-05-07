@@ -28,10 +28,13 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
 
     
     #maxProb = 1./np.sum((maxProbCum - yTrue)**2)
-    thetaDict = {'H0':theta[0], 'zLens':theta[1], 'densityProfile':theta[2], \
-                     'OmegaM':theta[3], 'OmegaL':theta[4], 'OmegaK':theta[5]}
+    thetaDict = \
+      {'H0':theta[0], 'zLens':theta[1], 'densityProfile':theta[2], \
+        'OmegaM':theta[3], 'OmegaL':theta[4], 'OmegaK':theta[5],\
+      'zLensWidth':theta[6], 'densityProfileWidth':theta[7]}
 
-    cumsumYtheory = hubbleInterpolator.predictCDF( xTrue, thetaDict )
+    cumsumYtheory = \
+      hubbleInterpolator.predictedCDFofDistribution( xTrue, thetaDict )
     #cumsumYtheory /= np.max(cumsumYtheory)
     #trueTheta=np.array([0.7,0.4,-1.75])   
     #trueTheory = hubbleInterpolator.predictPDF( xTrue, trueTheta )
@@ -112,8 +115,8 @@ class fitHubbleParameterClass:
         nwalkers = 20
 
         ndim = self.hubbleInterpolator.nFreeParameters
-        burn_len=500
-        chain_len=1000
+        burn_len=5
+        chain_len=45
         pos0 = np.random.rand(nwalkers,ndim)
         pos0[:,0] = np.random.rand( nwalkers) * 0.05 + 0.7
         pos0[:,1] =  np.random.randn( nwalkers) * 0.1 + 0.75
@@ -130,7 +133,7 @@ class fitHubbleParameterClass:
                                           args=args, \
                                           threads=nthreads)
                                           
-        pos, prob, state  = dmsampler.run_mcmc(pos0, burn_len)
+        pos, prob, state  = dmsampler.run_mcmc(pos0, burn_len, progress=True)
 
 
     
