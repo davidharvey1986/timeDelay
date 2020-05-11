@@ -87,27 +87,23 @@ def selectionFunctionIndividualLensesForData( ):
     dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
              
     allFiles = glob.glob(dirD+'/CDM/z*/B*_cluster_0_*.json')
-    
-    hubbleParameters = \
-      np.array([50., 60., 70., 80., 90., 100.])
-    #hubbleParameter = 70.
 
-    for hubbleParameter in hubbleParameters:
-        
-        for iFile in allFiles:
+    
+    listOfSelectionFunctions = []
+    pklFileName = \
+              '../output/CDM/selectionFunction/SF_data.pkl'
+    for iFile in allFiles:
   
             
-            fileName = iFile.split('/')[-1]
-            zLens =  iFile.split('/')[-2]
-            pklFileName = \
-              '../output/CDM/selectionFunction/SF_%s_%s_%i_data.pkl' \
-              % (zLens,fileName,hubbleParameter )
-            finalMergedPDFdict = \
-              selectionFunction([iFile], \
-                                newHubbleParameter=hubbleParameter,\
-                                useLsst = 21)
-                                
-            pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
+        fileName = iFile.split('/')[-1]
+        zLens =  iFile.split('/')[-2]
+  
+        finalMergedPDFdict = \
+          selectionFunction([iFile], useLsst = 21)
+          
+        listOfSelectionFunctions.append(finalMergedPDFdict)
+        
+    pkl.dump(listOfSelectionFunctions,open(pklFileName,'wb'), 2)
             
 def selectFunctionForAllLenses():
     
@@ -122,7 +118,7 @@ def selectFunctionForAllLenses():
           '../output/CDM/selectionFunction/allHalosFiducialCosmology.pkl' \
 
     finalMergedPDFdict = \
-         selectionFunction(allFiles, useLsst = True)
+         selectionFunction(allFiles, useLsst = 21)
                                                                 
     pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
 
@@ -252,5 +248,7 @@ def getSourceRedshiftWeight( z, zMed=1.0 ):
 if __name__ == "__main__":
     #selectionFunctionEnsembleHalos()
     #selectFunctionForAllLenses()
-    selectionFunctionIndividualLenses()
+    #selectionFunctionIndividualLenses()
     #selectionFunctionIndividualLensesForData()
+    #selectionFunctionIndividualLensesForData()
+    selectFunctionForAllLenses()

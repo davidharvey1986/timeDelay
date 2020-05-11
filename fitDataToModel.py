@@ -14,22 +14,58 @@ import lensing_parameters as lensing
 from matplotlib import colors as mcolors
 
 
-def main(pklFile='pickles/fitDataToModelPoisson.pkl'):
-        
+def monteCarlo( nMonteCarlo=100 ):
 
-    ndim = 6
+    params = np.array([])
+    ndim = 5
     figcorner, axarr = plt.subplots(ndim,ndim,figsize=(8,8))
+    allSamples  = None
+    maxLike = []
+    for iMonteCarlo in np.arange(nMonteCarlo):
+        pklFile = 'pickles/%i_monteCarlo_logPost.pkl' % iMonteCarlo
 
-    selectedTimeDelays = getObservations()
-
-    hubbleInterpolaterClass = hubbleInterpolator()
-
-    hubbleInterpolaterClass.getTrainingData('exactPDFpickles/noCosmology.pkl')
+        samples = main(pklFile=pklFile, monteCarlo=True)
+        labels = \
+          [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$', \
+           r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$', r'$Sigma' ]
+        if allSamples is None:
+            allSamples = samples
+        else:
+            allSamples = np.vstack((allSamples, samples))
+        y, x = np.histogram(samples[:,0], bins=100)
+        xc = (x[1:] + x[:-1])/2.
         
-    hubbleInterpolaterClass.getTimeDelayModel(modelFile='pickles/noCosmology.pkl')
+        maxLike.append(xc[np.argmax(y)])
+        
+    nsamples = allSamples.shape[0]
+    #plotMockedData( figcorner)
+
+    
+    corner.corner(allSamples,  levels=[0.68], bins=20,\
+                    plot_datapoints=False, labels=labels, fig=figcorner,\
+                      weights=np.ones(nsamples)/nsamples, color='black', \
+                      hist_kwargs={'linewidth':1.},\
+                      contour_kwargs={'linewidths':1.}, smooth=True)
+    for i in range(samples.shape[1]):
+        lo, med, hi = np.percentile(samples[:,i],[16,50,84])
+        print( med, med-lo, hi-med)
+    pdb.set_trace()
+    plt.show()
+        
+def main(pklFile='pickles/fitDataToModel_lenPost.pkl', monteCarlo=False):
+    if not os.path.isfile( pklFile ):   
+        selectedTimeDelays = getObservations(monteCarlo=monteCarlo)
+
+        dataSelectionFunction = \
+          '../output/CDM/selectionFunction/SF_data.pkl'
+        hubbleInterpolaterClass = hubbleInterpolator(allDistributionsPklFile=dataSelectionFunction)
+
+        hubbleInterpolaterClass.getTrainingData('pickles/trainingDataForObs.pkl')
+        
+        hubbleInterpolaterClass.getTimeDelayModel()
     
 
-    if not os.path.isfile( pklFile ):
+    
         fitHubbleClass = \
           fitHubble.fitHubbleParameterClass( selectedTimeDelays, \
                                     hubbleInterpolaterClass)
@@ -40,10 +76,16 @@ def main(pklFile='pickles/fitDataToModelPoisson.pkl'):
         
         samples = pkl.load(open(pklFile,'rb'))
 
+    if monteCarlo:
+        return samples
+    
+    ndim = samples.shape[1]
+    figcorner, axarr = plt.subplots(ndim,ndim,figsize=(8,8))
+
     parRange = [[0.55,0.8],[0.45,0.6],[-2.,-1.6]]
     labels = \
       [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$', \
-           r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$' ]
+           r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$', r'$Sigma' ]
     nsamples = samples.shape[0]
     #plotMockedData( figcorner)
     
@@ -73,7 +115,6 @@ def main(pklFile='pickles/fitDataToModelPoisson.pkl'):
         lo, med, hi = np.percentile(samples[:,i],[16,50,84])
         print( med, med-lo, hi-med)
 
-    pdb.set_trace()
     plt.savefig('../plots/fitDataToModel.pdf')
 
     plt.show()
@@ -112,13 +153,19 @@ def plotMockedData(fig, nIterations=10):
     pdb.set_trace()
 
     
-def getObservations(nBins=20):
+def getObservations(nBins=20, monteCarlo=False):
     data = np.loadtxt( '../data/oguriTimeDelays.txt',\
                            dtype=[('name',object), ('zs', float), \
                                     ('zl', float),\
-                                      ('timeDelays', float)])
+                                      ('timeDelays', float), \
+                                      ('timeDelayErr', float) ])
 
-    logTimeDelays = np.log10(np.sort(data['timeDelays']))
+    if monteCarlo:
+        timeDelays = np.random.randn( len(data))*data['timeDelayErr']+data['timeDelays']
+    else:
+        timeDelays = data['timeDelays']
+
+    logTimeDelays = np.log10(np.sort(timeDelays))
     nSamples = len(data)
     y, x = np.histogram(logTimeDelays, \
         bins=np.linspace(-1,3,nBins+1), density=True)
@@ -152,7 +199,7 @@ def getObservations(nBins=20):
 
 
 if __name__ == '__main__':
-    main()
-    
+    monteCarlo()
+    #main()
     
     

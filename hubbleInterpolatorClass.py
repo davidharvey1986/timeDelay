@@ -23,11 +23,12 @@ class hubbleInterpolator:
     planes
     '''
 
-    def __init__( self, nPrincipalComponents=9, minimumTimeDelay=0.001):
+    def __init__( self, nPrincipalComponents=9, minimumTimeDelay=0.001,\
+                      allDistributionsPklFile=None, regressorNoiseLevel=1.5e-2):
         '''
         inputTrainFeatures: a list of the cosmology keys to train over
         '''
-
+        self.regressorNoiseLevel = regressorNoiseLevel
         
         self.logMinimumTimeDelay = np.log10(np.max([minimumTimeDelay, 0.001]))
         self.nPrincipalComponents = nPrincipalComponents
@@ -39,11 +40,18 @@ class hubbleInterpolator:
           {'H0':70., 'OmegaM':0.3, 'OmegaL':0.7, 'OmegaK':0.}
             
         #How to split up the trianing sample to speed it up
-
-        self.allDistributionsPklFile = \
+        if allDistributionsPklFile is None:
+            self.allDistributionsPklFile = \
+              "../output/CDM/selectionFunction/"+\
+              "sparselyPopulatedParamSpace.pkl"
+        else:
+            self.allDistributionsPklFile =\
+              allDistributionsPklFile
+              
+        self.interpolatorDistributions = \
           "../output/CDM/selectionFunction/"+\
           "sparselyPopulatedParamSpace.pkl"
-          
+    
     def getTrainingData( self, pklFile = 'exactPDFpickles/trainingData.pkl' ):
         '''
         Import all the json files from a given lens redshift
@@ -146,8 +154,7 @@ class hubbleInterpolator:
         self.principalComponents = self.pca.transform( self.pdfArray )
 
             
-    def learnPrincipalComponents( self, length_scale=1., nu=1./2., \
-                                      alpha=1e0):
+    def learnPrincipalComponents( self, length_scale=1., nu=3./2.):
         '''
         Using a mixture of Gaussian Processes 
         predict the distributions of compoentns
@@ -173,7 +180,7 @@ class hubbleInterpolator:
         for i in range(self.nPrincipalComponents):
 
             gaussProcess = \
-              GaussianProcessRegressor( alpha=alpha, kernel=kernel,\
+              GaussianProcessRegressor( alpha=self.regressorNoiseLevel, kernel=kernel,\
                                             n_restarts_optimizer=10)
 
 
@@ -192,7 +199,8 @@ class hubbleInterpolator:
         #Values will be the difference in the median of the distribution which will shift linearly with the cosmology
         
         #get the pickle file
-        allDistributions = pkl.load(open(self.allDistributionsPklFile,'rb'))
+        allDistributions = \
+          pkl.load(open(self.interpolatorDistributions,'rb'))
 
         values = np.array([])
 
@@ -258,14 +266,12 @@ class hubbleInterpolator:
         self.interpolatorFunction.fit(points, values)
         
 
-    def getTimeDelayModel( self, modelFile=None ):
+    def getTimeDelayModel( self ):
         '''
         Run the two programs to learn and inteprolate the pdf
         i will save it in a pkl file as it might take some time.
         '''
 
-        if modelFile is None:
-            modelFile = 'pickles/hubbleInterpolatorModel.pkl'
 
         self.extractPrincipalComponents()
         self.learnPrincipalComponents()
@@ -284,7 +290,7 @@ class hubbleInterpolator:
             pkl.dump(self.interpolatorFunction, \
                         open(interpolatorFunction, 'wb'))
         self.nFreeParameters = len(self.fiducialCosmology.keys())+\
-          len(self.features.dtype) + 1
+          len(self.features.dtype) 
         #+2 for the widht of the distributions
 
     def getGaussProcessLogLike( self, theta=None ):
@@ -378,12 +384,12 @@ class hubbleInterpolator:
         predicted[ predicted< 0] = 0
 
         #account for distriunbtion of models
-        dX = timeDelays[1] - timeDelays[0]
+        #dX = timeDelays[1] - timeDelays[0]
         #Ensure the same dt 
-        variancePixels = inputFeatureDict['variance']/dX
-        predictedConvolved = gauss(predicted, variancePixels)
+        #variancePixels = inputFeatureDict['variance']/dX
+        #predictedConvolved = gauss(predicted, variancePixels)
 
-        return predictedConvolved
+        return predicted
 
     def predictedCDFofDistribution( self, timeDelays, inputFeatureDict ):
         '''

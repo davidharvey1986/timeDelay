@@ -30,8 +30,7 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     #maxProb = 1./np.sum((maxProbCum - yTrue)**2)
     thetaDict = \
       {'H0':theta[0], 'zLens':theta[1], 'densityProfile':theta[2], \
-        'OmegaM':theta[3], 'OmegaL':theta[4], 'OmegaK':theta[5],\
-      'variance':theta[6]}
+        'OmegaM':theta[3], 'OmegaL':theta[4], 'OmegaK':0}
 
     cumsumYtheory = \
       hubbleInterpolator.predictCDF( xTrue, thetaDict )
@@ -41,8 +40,8 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
    
     prior = priorOnParameters( thetaDict, hubbleInterpolator )
     
-    prob = 1./np.sum((cumsumYtheory - yTrue)**2)
-    
+    prob = 2.*np.log10(1./np.sum((cumsumYtheory - yTrue)**2))
+
     if np.isnan(prob):
         pdb.set_trace()
         return -np.inf
@@ -51,27 +50,36 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     return prob*prior
     
 def priorOnParameters( thetaDict, hubbleInterpolator ):
-    
+   
     for iThetaKey in hubbleInterpolator.features.dtype.names:
+   
         if (thetaDict[iThetaKey] < \
                 np.min(hubbleInterpolator.features[iThetaKey])) | \
             (thetaDict[iThetaKey] > \
                 np.max(hubbleInterpolator.features[iThetaKey])):
+
             return -np.inf
 
+
     for iCosmoKey in hubbleInterpolator.cosmologyFeatures.dtype.names:
+        if iCosmoKey == 'H0':
+            continue
+       
         if (thetaDict[iCosmoKey] < \
                 np.min(hubbleInterpolator.cosmologyFeatures[iCosmoKey])) | \
           (thetaDict[iCosmoKey] > \
                np.max(hubbleInterpolator.cosmologyFeatures[iCosmoKey])):
             return -np.inf
-
-    if (thetaDict['variance'] < 0) | (thetaDict['variance'] > 0.5):
+    
+    if (thetaDict['H0'] < 0.6) | (thetaDict['H0'] > 0.8):
+        
         return -np.inf
+    #if (thetaDict['variance'] < 0) | (thetaDict['variance'] > 0.5):
+    #    return -np.inf
 
-    variancePrior = norm.pdf(thetaDict['variance'], loc=0.1, scale=0.05)
+    #variancePrior = norm.pdf(thetaDict['variance'], loc=0.1, scale=0.05)
  
-    return variancePrior
+    return 1
 class fitHubbleParameterClass:
     
     def __init__( self, pdf, hubbleInterpolator,\
@@ -95,17 +103,17 @@ class fitHubbleParameterClass:
   
         nwalkers = 20
 
-        ndim = self.hubbleInterpolator.nFreeParameters
+        ndim = self.hubbleInterpolator.nFreeParameters - 1
         burn_len=100
-        chain_len=2000
+        chain_len=1000
         pos0 = np.random.rand(nwalkers,ndim)
-        pos0[:,0] = np.random.rand( nwalkers) * 0.05 + 0.7
-        pos0[:,1] =  np.random.randn( nwalkers) * 0.1 + 0.75
-        pos0[:,2] =  np.random.randn( nwalkers) * 0.1 - 1.75
+        pos0[:,0] = np.random.uniform( 0.6, 0.8, nwalkers) 
+        pos0[:,1] =  np.random.uniform( 0.2, 0.74, nwalkers)
+        pos0[:,2] =  np.random.uniform( -1.6,-2., nwalkers)
         pos0[:,3] =  np.random.uniform( 0.25, 0.35, nwalkers)
         pos0[:,4] =  np.random.uniform( 0.65, 0.75, nwalkers)
-        pos0[:,5] =  np.random.uniform( -0.02, 0.02, nwalkers)
-        pos0[:,6] =  np.random.uniform( 0.0, 0.2, nwalkers)
+        #pos0[:,5] =  np.random.uniform( -0.02, 0.02, nwalkers)
+        
 
         args = (self.pdf['x'], self.pdf['y'], \
                     self.pdf['error'], self.hubbleInterpolator )
