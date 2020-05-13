@@ -17,8 +17,7 @@ from matplotlib import colors as mcolors
 def monteCarlo( nMonteCarlo=100 ):
 
     params = np.array([])
-    ndim = 5
-    figcorner, axarr = plt.subplots(ndim,ndim,figsize=(8,8))
+
     allSamples  = None
     maxLike = []
     for iMonteCarlo in np.arange(nMonteCarlo):
@@ -39,15 +38,16 @@ def monteCarlo( nMonteCarlo=100 ):
         
     nsamples = allSamples.shape[0]
     #plotMockedData( figcorner)
+    ndim = allSamples.shape[1]
+    figcorner, axarr = plt.subplots(ndim,ndim,figsize=(8,8))
 
-    
     corner.corner(allSamples,  levels=[0.68], bins=20,\
                     plot_datapoints=False, labels=labels, fig=figcorner,\
                       weights=np.ones(nsamples)/nsamples, color='black', \
                       hist_kwargs={'linewidth':1.},\
                       contour_kwargs={'linewidths':1.}, smooth=True)
     for i in range(samples.shape[1]):
-        lo, med, hi = np.percentile(samples[:,i],[16,50,84])
+        lo, med, hi = np.percentile(allSamples[:,i],[16,50,84])
         print( med, med-lo, hi-med)
     pdb.set_trace()
     plt.show()
@@ -202,6 +202,6 @@ def getObservations(nBins=20, monteCarlo=False):
 
 if __name__ == '__main__':
     monteCarlo()
-    main()
+    #main()
     
     

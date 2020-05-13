@@ -50,15 +50,21 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     return prob*prior
     
 def priorOnParameters( thetaDict, hubbleInterpolator ):
+
+  
    
     for iThetaKey in hubbleInterpolator.features.dtype.names:
-   
-        if (thetaDict[iThetaKey] < \
-                np.min(hubbleInterpolator.features[iThetaKey])) | \
-            (thetaDict[iThetaKey] > \
-                np.max(hubbleInterpolator.features[iThetaKey])):
+        if iThetaKey == 'totalMass':
+            if (thetaDict['totalMass'] < 11) |\
+              (thetaDict['totalMass'] > 13):
+              return -np.inf
+        else:
+            if (thetaDict[iThetaKey] < \
+                    np.min(hubbleInterpolator.features[iThetaKey])) | \
+                (thetaDict[iThetaKey] > \
+                    np.max(hubbleInterpolator.features[iThetaKey])):
 
-            return -np.inf
+                return -np.inf
 
 
     for iCosmoKey in hubbleInterpolator.cosmologyFeatures.dtype.names:
@@ -111,7 +117,7 @@ class fitHubbleParameterClass:
         pos0[:,0] = np.random.uniform( 0.6, 0.8, nwalkers) 
         pos0[:,1] =  np.random.uniform( 0.2, 0.74, nwalkers)
         pos0[:,2] =  np.random.uniform( -1.6,-2., nwalkers)
-        pos0[:,3] =  np.random.uniform( 10.9, 11.5, nwalkers)
+        pos0[:,3] =  np.random.uniform( 11, 13., nwalkers)
         #pos0[:,4] =  np.random.uniform( 0.25, 0.35, nwalkers)
         #pos0[:,5] =  np.random.uniform( 0.65, 0.75, nwalkers)
         #pos0[:,6] =  np.random.uniform( -0.02, 0.02, nwalkers)

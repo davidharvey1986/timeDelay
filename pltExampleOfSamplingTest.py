@@ -1,17 +1,17 @@
-from predictConstraintsOnHubble import *
+from testSensitivityToDifferentHaloMass import *
 
 def plotCornerPlot( sampleSize=100, trueDistribution=False):
 
     labels = \
       [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$',r'$M_{<100}$', \
            r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$']
-    ndim = 6
+    ndim = 4
             
     figcorner, axarr = plt.subplots(ndim,ndim,figsize=(15,15))
     color = ['blue','red','green','cyan']
     
     for icolor, sampleSize in enumerate([0.]):
-        samples = getMCMCchainForSamplesSize(10000, 10,  None, minimumTimeDelay=sampleSize)
+        samples = getMCMCchainForSamplesSize(10000, 10,  None, massCut=11.1)
         if (not trueDistribution):
             truths  = [0.7, 0.4, -1.75, 11.5, 0.3, 0.7, 0.]
         else:

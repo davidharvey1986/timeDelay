@@ -28,8 +28,8 @@ class hubbleInterpolator:
     '''
 
     def __init__( self, nPrincipalComponents=9, minimumTimeDelay=0.001,\
-                      allDistributionsPklFile=None, massCut=1e16, \
-                      regressorNoiseLevel=1.5e-2):
+                      allDistributionsPklFile=None, massCut=[0., 16], \
+                      regressorNoiseLevel=1e-10):
         '''
         inputTrainFeatures: a list of the cosmology keys to train over
         minimmumTimeDelay: should we expect a minimum possibly observed time delay 
@@ -112,7 +112,13 @@ class hubbleInterpolator:
             
             totalMassForHalo = \
               getMass.getTotalMass( fileName, rGrid=rGrid)
-            
+
+            if (totalMassForHalo < self.massCut[0]) |\
+               (totalMassForHalo > self.massCut[1]):
+               continue
+
+            print(totalMassForHalo)
+              
             zLensStr = fileName.split('/')[-2]
             zLens = np.float(zLensStr.split('_')[1])
             finalMergedPDFdict['y'] = \
@@ -329,8 +335,7 @@ class hubbleInterpolator:
         inputFeatureNames = ['zLens','densityProfile','totalMass']
         
         inputFeatures = \
-          np.array([ inputFeatureDict[i] for i in inputFeatureNames \
-                         if i not in self.cosmoKeys ])
+          np.array([ inputFeatureDict[i] for i in inputFeatureNames ])
 
         features = inputFeatures.reshape(1,-1)
         
