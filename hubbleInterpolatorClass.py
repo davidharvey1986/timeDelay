@@ -2,6 +2,7 @@ import numpy as np
 from scipy.interpolate import CubicSpline
 from scipy.stats import kurtosis
 import plotAsFunctionOfDensityProfile as getDensity
+import plotAsFuncTotalMass as getMass 
 import os
 import pickle as pkl
 from interpolateSourcePlane import *
@@ -16,6 +17,9 @@ import time
 from scipy.interpolate import LinearNDInterpolator
 from sklearn.linear_model import LinearRegression
 from scipy.ndimage import gaussian_filter as gauss
+from sklearn import preprocessing
+
+
 
 class hubbleInterpolator:
     '''
@@ -42,7 +46,9 @@ class hubbleInterpolator:
         #if so i need a defaul cosmology
         self.fiducialCosmology = \
           {'H0':70., 'OmegaM':0.3, 'OmegaL':0.7, 'OmegaK':0.}
-            
+        self.cosmoKeys = self.fiducialCosmology.keys()
+
+        
         #How to split up the trianing sample to speed it up
         if allDistributionsPklFile is None:
             self.allDistributionsPklFile = \
@@ -71,10 +77,7 @@ class hubbleInterpolator:
                 pkl.load(open(pklFile, 'rb'))
                 self.nFeatures = len(self.features.dtype)
                 return
-        
-
-        
-
+    
 
         self.pdfArray = None
 
@@ -85,8 +88,10 @@ class hubbleInterpolator:
         cosmoKeys =  allDistributions[0]['cosmology'].keys()
         
         
+        rGrid = getMass.getRadGrid()
         
-        featureDtype = [( ('zLens',float) ), ('densityProfile', float) ]
+        featureDtype = \
+          [( ('zLens',float) ), ('densityProfile', float), ('totalMass', float) ]
 
         features = np.array([], dtype=featureDtype)
         self.nFeatures = len(features.dtype)
@@ -106,7 +111,7 @@ class hubbleInterpolator:
             fileName = finalMergedPDFdict['fileNames'][0]
             
             totalMassForHalo = \
-              getDensity.getTotalMass( fileName, rGrid=rGrid)
+              getMass.getTotalMass( fileName, rGrid=rGrid)
             
             zLensStr = fileName.split('/')[-2]
             zLens = np.float(zLensStr.split('_')[1])
@@ -132,7 +137,7 @@ class hubbleInterpolator:
             densityProfile = \
               getDensity.getDensityProfileIndex(fileName)[0]
 
-            allPars = [ zLens, densityProfile]
+            allPars = [ zLens, densityProfile, totalMassForHalo]
 
             iFeature = np.array(allPars, dtype=features.dtype)
 
@@ -184,20 +189,16 @@ class hubbleInterpolator:
         self.reshapedFeatures = \
           self.features.view('<f8').reshape((self.nPDF,self.nFeatures))
 
-        
         for i in range(self.nPrincipalComponents):
 
             gaussProcess = \
               GaussianProcessRegressor( alpha=self.regressorNoiseLevel, kernel=kernel,\
                                             n_restarts_optimizer=10)
 
-
-                
-            gaussProcess.fit(self.reshapedFeatures, self.principalComponents[:,i],)
+            gaussProcess.fit(self.reshapedFeatures, self.principalComponents[:,i])
 
                 
             self.predictor.append(gaussProcess)
-
 
     def interpolateCosmologyShift( self ):
 
@@ -235,10 +236,13 @@ class hubbleInterpolator:
             densityProfile = \
               getDensity.getDensityProfileIndex(fileName)[0]
 
-            
+            totalMassForHalo = \
+              getMass.getTotalMass( fileName, rGrid=rGrid)
+
             defaultDistributionIndex = \
               ( self.features['densityProfile'] == densityProfile ) &\
-              ( self.features['zLens'] == zLens )
+              ( self.features['zLens'] == zLens ) &\
+              ( self.features['totalMass'] == totalMass)
 
             defaulfDistributionPDF = \
               self.pdfArray[ defaultDistributionIndex,:][0]
@@ -298,8 +302,11 @@ class hubbleInterpolator:
                          open('pickles/cosmologyFeatures.pkl','wb'))
             pkl.dump(self.interpolatorFunction, \
                         open(interpolatorFunction, 'wb'))
+
+        
         self.nFreeParameters = len(self.fiducialCosmology.keys())+\
-          len(self.features.dtype) 
+          len(self.features.dtype)
+
         #+2 for the widht of the distributions
 
     def getGaussProcessLogLike( self, theta=None ):
@@ -319,39 +326,28 @@ class hubbleInterpolator:
         #parse the input parameters
         
 
-        if type(inputFeatureDict['zLens']) == np.ndarray:
-            inputFeatures = \
-              np.vstack(( inputFeatureDict['zLens'], \
-                            inputFeatureDict['densityProfile']))
-            predictedComponents = \
-              np.zeros((self.nPrincipalComponents,\
-                    len(inputFeatureDict['zLens'])))
-                            
-            features = inputFeatures.T
-                        
-            #Never varies for input    so use the first value
-            interpolateThisCosmology = \
-              np.array([ inputFeatureDict[i][0] \
-                    for i in self.fiducialCosmology.keys()])
-        else:
-            inputFeatures = \
-            np.array([ inputFeatureDict['zLens'], \
-                           inputFeatureDict['densityProfile']])
-            features = inputFeatures.reshape(1,-1)
+        inputFeatureNames = ['zLens','densityProfile','totalMass']
+        
+        inputFeatures = \
+          np.array([ inputFeatureDict[i] for i in inputFeatureNames \
+                         if i not in self.cosmoKeys ])
 
-            predictedComponents = \
+        features = inputFeatures.reshape(1,-1)
+        
+        predictedComponents = \
               np.zeros(self.nPrincipalComponents)
               
-            interpolateThisCosmology = \
+        interpolateThisCosmology = \
               np.array([ inputFeatureDict[i] \
                     for i in self.fiducialCosmology.keys()])
-                    
+
+        
         for iComponent in range(self.nPrincipalComponents):
             #there are now many preditors for the subsamples
             #So the predictor for this subsample is
             predictor = self.predictor[iComponent]
 
-                
+
             predictedComponents[iComponent] = \
                   predictor.predict(features)
 
@@ -369,17 +365,10 @@ class hubbleInterpolator:
           
 
         #Just interpolate the x range for plotting
-        if type(inputFeatureDict['zLens']) == np.ndarray:
-            predictedTransformCDF =  \
-              self.pca.inverse_transform( predictedComponents.T)
-            pdfInterpolator = \
-              CubicSpline( self.timeDelays+predictedCosmoShift, \
-                               predictedTransformCDF, axis=1)
-                               
-        else:
-            predictedTransformCDF =  \
+
+        predictedTransformCDF =  \
                self.pca.inverse_transform( predictedComponents)
-            pdfInterpolator = \
+        pdfInterpolator = \
               CubicSpline( self.timeDelays+predictedCosmoShift, \
                                predictedTransformCDF)
         
@@ -400,35 +389,7 @@ class hubbleInterpolator:
 
         return predicted
 
-    def predictedCDFofDistribution( self, timeDelays, inputFeatureDict ):
-        '''
-        An individual estimator seems good, but 
-        perhaps i should be predicting a mean and distriubtion
-        in estimates
 
-        '''
-        nIt = 10
-        alphaList = \
-          np.random.randn(nIt)*inputFeatureDict['densityProfileWidth']+\
-          inputFeatureDict['densityProfile']
-        zList = \
-          np.random.randn(nIt)*inputFeatureDict['zLensWidth']+\
-          inputFeatureDict['zLens']
-        
-        inputArray = {}
-        
-        for i in inputFeatureDict.keys():
-            inputArray[i] = np.zeros(nIt)+inputFeatureDict[i]
-            
-        inputArray['densityProfile'] = alphaList
-        inputArray['zLens'] = zList
-        cdfArray = self.predictCDF( timeDelays, inputArray)
-
-        for iIt in np.arange(nIt):
-            plt.plot(timeDelays,  cdfArray[iIt, :], color='grey', alpha=0.2)
-
-        return np.mean(cdfArray, axis=0)
-    
     def plotPredictedPDF( self, inputFeatures):
         
         #plot the now predicted PDF

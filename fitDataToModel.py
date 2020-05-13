@@ -22,7 +22,7 @@ def monteCarlo( nMonteCarlo=100 ):
     allSamples  = None
     maxLike = []
     for iMonteCarlo in np.arange(nMonteCarlo):
-        pklFile = 'pickles/%i_monteCarlo_logPost.pkl' % iMonteCarlo
+        pklFile = 'pickles/%i_monteCarlo_withMass.pkl' % iMonteCarlo
 
         samples = main(pklFile=pklFile, monteCarlo=True)
         labels = \
@@ -52,15 +52,17 @@ def monteCarlo( nMonteCarlo=100 ):
     pdb.set_trace()
     plt.show()
         
-def main(pklFile='pickles/fitDataToModel_lenPost.pkl', monteCarlo=False):
+def main(pklFile='pickles/fitDataToModel_withMass.pkl', monteCarlo=False):
     if not os.path.isfile( pklFile ):   
         selectedTimeDelays = getObservations(monteCarlo=monteCarlo)
 
-        dataSelectionFunction = \
-          '../output/CDM/selectionFunction/SF_data.pkl'
-        hubbleInterpolaterClass = hubbleInterpolator(allDistributionsPklFile=dataSelectionFunction)
+        dataSelectionFunction = '../output/CDM/selectionFunction/SF_data.pkl'
+          
+        hubbleInterpolaterClass = \
+          hubbleInterpolator(allDistributionsPklFile=dataSelectionFunction,\
+                                 regressorNoiseLevel=1e-3)
 
-        hubbleInterpolaterClass.getTrainingData('pickles/trainingDataForObs.pkl')
+        hubbleInterpolaterClass.getTrainingData('pickles/trainingDataForObsWithMass.pkl')
         
         hubbleInterpolaterClass.getTimeDelayModel()
     
@@ -84,7 +86,7 @@ def main(pklFile='pickles/fitDataToModel_lenPost.pkl', monteCarlo=False):
 
     parRange = [[0.55,0.8],[0.45,0.6],[-2.,-1.6]]
     labels = \
-      [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$', \
+      [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$', r'$M_t$'\
            r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$', r'$Sigma' ]
     nsamples = samples.shape[0]
     #plotMockedData( figcorner)
@@ -200,6 +202,6 @@ def getObservations(nBins=20, monteCarlo=False):
 
 if __name__ == '__main__':
     monteCarlo()
-    #main()
+    main()
     
     

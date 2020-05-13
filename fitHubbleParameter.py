@@ -29,15 +29,15 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     
     #maxProb = 1./np.sum((maxProbCum - yTrue)**2)
     thetaDict = \
-      {'H0':theta[0], 'zLens':theta[1], 'densityProfile':theta[2], \
-        'OmegaM':theta[3], 'OmegaL':theta[4], 'OmegaK':0}
+      {'H0':theta[0], 'zLens':theta[1], 'densityProfile':theta[2], 'totalMass':theta[3], \
+        'OmegaM':0.3, 'OmegaL':0.7, 'OmegaK':0}
 
     cumsumYtheory = \
       hubbleInterpolator.predictCDF( xTrue, thetaDict )
 
       
    
-   
+    
     prior = priorOnParameters( thetaDict, hubbleInterpolator )
     
     prob = 1./np.sum((cumsumYtheory - yTrue)**2)
@@ -77,7 +77,7 @@ def priorOnParameters( thetaDict, hubbleInterpolator ):
     #if (thetaDict['variance'] < 0) | (thetaDict['variance'] > 0.5):
     #    return -np.inf
 
-    #variancePrior = norm.pdf(thetaDict['variance'], loc=0.1, scale=0.05)
+    variancePrior = norm.pdf(thetaDict['zLens'], loc=0.55, scale=0.4)
  
     return 1
 class fitHubbleParameterClass:
@@ -103,16 +103,18 @@ class fitHubbleParameterClass:
   
         nwalkers = 20
 
-        ndim = self.hubbleInterpolator.nFreeParameters - 1
+        ndim = self.hubbleInterpolator.nFreeParameters  - 3
+
         burn_len=100
         chain_len=1000
         pos0 = np.random.rand(nwalkers,ndim)
         pos0[:,0] = np.random.uniform( 0.6, 0.8, nwalkers) 
         pos0[:,1] =  np.random.uniform( 0.2, 0.74, nwalkers)
         pos0[:,2] =  np.random.uniform( -1.6,-2., nwalkers)
-        pos0[:,3] =  np.random.uniform( 0.25, 0.35, nwalkers)
-        pos0[:,4] =  np.random.uniform( 0.65, 0.75, nwalkers)
-        #pos0[:,5] =  np.random.uniform( -0.02, 0.02, nwalkers)
+        pos0[:,3] =  np.random.uniform( 10.9, 11.5, nwalkers)
+        #pos0[:,4] =  np.random.uniform( 0.25, 0.35, nwalkers)
+        #pos0[:,5] =  np.random.uniform( 0.65, 0.75, nwalkers)
+        #pos0[:,6] =  np.random.uniform( -0.02, 0.02, nwalkers)
         
 
         args = (self.pdf['x'], self.pdf['y'], \

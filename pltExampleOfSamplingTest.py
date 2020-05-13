@@ -3,17 +3,17 @@ from predictConstraintsOnHubble import *
 def plotCornerPlot( sampleSize=100, trueDistribution=False):
 
     labels = \
-      [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',\
-           r'$\alpha$', r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$',r'$\Sigma_\alpha$',r'$\Sigma_z$' ]
-    ndim = 5
+      [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$',r'$M_{<100}$', \
+           r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$']
+    ndim = 6
             
     figcorner, axarr = plt.subplots(ndim,ndim,figsize=(15,15))
     color = ['blue','red','green','cyan']
     
-    for icolor, sampleSize in enumerate([0.,10]):
-        samples = getMCMCchainForSamplesSize(100, 10,  None, minimumTimeDelay=sampleSize)
+    for icolor, sampleSize in enumerate([0.]):
+        samples = getMCMCchainForSamplesSize(10000, 10,  None, minimumTimeDelay=sampleSize)
         if (not trueDistribution):
-            truths  = [0.7, 0.5, -1.75, 0.3, 0.7, 0.]
+            truths  = [0.7, 0.4, -1.75, 11.5, 0.3, 0.7, 0.]
         else:
             truths = None
             for i in axarr[:,0]:

@@ -123,7 +123,20 @@ def main( ):
 def func(x, a, b):
     return a  + x*b
 
-def getTotalMass( jsonFileName, rGrid, radialCut=100.):
+def getTotalMass( jsonFileName, rGrid, radialCut=50.):
+    if os.path.isfile( 'pickles/totalMasses.pkl'):
+        jsonFiles, masses = \
+          pkl.load(open('pickles/totalMasses.pkl','rb'))
+
+        matchedJson = '/'.join(jsonFileName.split('/')[-2:])
+        matchedJsonToThese = \
+          np.array([ '/'.join(i.split('/')[-2:]) for i in jsonFiles])
+        masses =  masses[matchedJsonToThese == matchedJson]
+        if len(masses) == 0:
+            print('cant find file name %s' % jsonFileName)
+            pdb.set_trace()
+        return masses[0]
+    
     dataDir = '/Users/DavidHarvey/Documents/Work/WDM/data/withProjections/'
     
     haloName = jsonFileName.split('/')[-1].split('_')[0]
@@ -135,8 +148,22 @@ def getTotalMass( jsonFileName, rGrid, radialCut=100.):
     dPix = 1e-4*1e-4
     return np.log10(np.sum( data[ rGrid < radialCut ])*dPix)
   
+def saveAllTotalMass(load=True):
+    #So i dont have to recall the functiuon which takes a while
+    #in the hubble interpolator
+    
+    allJsonFiles = glob.glob('/Users/DavidHarvey/Documents/Work/TimeDelay/output/CDM/z*/*.json')
 
+    totalMass = np.zeros(len(allJsonFiles))
+    rGrid = getRadGrid()
+    for i, iJson in enumerate(allJsonFiles):
+        iTotalMass =  getTotalMass( iJson, rGrid=rGrid)
+        totalMass[i] = iTotalMass
+    
+    pkl.dump([allJsonFiles,totalMass], \
+                 open('pickles/totalMasses.pkl', 'wb'), 2)
 
 if __name__ == '__main__':
+    saveAllTotalMass()
     main()
-distance
+

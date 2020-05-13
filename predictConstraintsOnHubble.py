@@ -35,16 +35,14 @@ def nonPerfectFittingFunction(nComponents=5, inputHubbleParameter=0.7):
     #####
     '''
     '''
-    sampleSizesNoMin, estimatesNoMin = \
-     getPredictedConstraints(trueDistribution=False)
-
+    sampleSizesNoMin, estimatesNoMin = getPredictedConstraints()
 
     plt.errorbar( sampleSizesNoMin, estimatesNoMin/inputHubbleParameter*100., \
                   label=r'$\Delta t_{\rm min} = 0$ days', color='red')
                   
     constraints3000 = np.interp( 3000, sampleSizesNoMin, estimatesNoMin)
     constraints400 = np.interp( 400, sampleSizesNoMin, estimatesNoMin)
-    
+    '''
     ########
     sampleSizes, estimates = \
       getPredictedConstraints(minimumTimeDelay=10)
@@ -54,7 +52,7 @@ def nonPerfectFittingFunction(nComponents=5, inputHubbleParameter=0.7):
     #######
     
     
-    pdb.set_trace()
+    '''
     
     
     plt.plot( sampleSizes, np.ones(len(sampleSizes))+1, 'c--', \
@@ -80,20 +78,17 @@ def nonPerfectFittingFunction(nComponents=5, inputHubbleParameter=0.7):
 
 def getPredictedConstraints(nIterations = 10,\
                                 nSampleSizes = 11,\
-                                exactIndex=False,\
-                                trueDistribution=False,\
-                                differentHalo=None,\
                                 minimumTimeDelay=0.):
 
 
 
     hubbleInterpolaterClass = \
-          hubbleModel.hubbleInterpolator( minimumTimeDelay=minimumTimeDelayx)
+          hubbleModel.hubbleInterpolator( minimumTimeDelay=minimumTimeDelay)
     
     if minimumTimeDelay > 0:
-        hubbleInterpolaterClass.getTrainingData(pklFile='picklesMinimumDelay/trainingData.pkl')
+        hubbleInterpolaterClass.getTrainingData(pklFile='picklesMinimumDelay/trainingDataWithMass.pkl')
     else:
-        hubbleInterpolaterClass.getTrainingData('pickles/trainingDataForObs.pkl')
+        hubbleInterpolaterClass.getTrainingData('pickles/trainingDataWithMass.pkl')
 
     hubbleInterpolaterClass.getTimeDelayModel()
   
@@ -109,8 +104,6 @@ def getPredictedConstraints(nIterations = 10,\
         samples = \
           getMCMCchainForSamplesSize(iSampleSize, nIterations, \
                                          hubbleInterpolaterClass,\
-                                         trueDistribution=trueDistribution,\
-                                         differentHalo=differentHalo,\
                                          minimumTimeDelay=minimumTimeDelay)
 
                 
@@ -125,21 +118,14 @@ def getPredictedConstraints(nIterations = 10,\
     
 def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
                     hubbleInterpolaterClass,\
-                    trueDistribution=False, differentHalo=None,\
                     minimumTimeDelay=0.):
     samples = None
     
-    if trueDistribution:
-        pklFile = 'picklesTrueDistribution/multiFitSamples_%i.pkl' \
-          % iSampleSize
-    elif differentHalo is not None:
-        pklFile = 'picklesDifferentHalo/multiFitSamples_%s_%i.pkl' \
-          % (differentHalo, iSampleSize)
-    elif minimumTimeDelay > 0:
-        pklFile = 'picklesMinimumDelay/multiFitSamples_%i.pkl' \
+    if minimumTimeDelay > 0:
+        pklFile = 'picklesMinimumDelay/multiFitSamples_withMass_%i.pkl' \
           % (iSampleSize)
     else:
-        pklFile = 'exactPDFpickles/multiFitSamples_%i.pkl' \
+        pklFile = 'exactPDFpickles/multiFitSamples_withMass_%i.pkl' \
           % iSampleSize
     
 
@@ -150,8 +136,6 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
         print("Iteration: %i/%i" % (iIteration+1, nIterations))
         selectedTimeDelays = \
               selectRandomSampleOfTimeDelays( iSampleSize, \
-                        trueDistribution=trueDistribution,\
-                        differentHalo=differentHalo,\
                         minimumTimeDelay=minimumTimeDelay)
       
         fitHubbleClass = \
@@ -173,8 +157,7 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
     return samples
 
 
-def selectRandomSampleOfTimeDelays( nSamples,  trueDistribution=False,\
-                        differentHalo=None, minimumTimeDelay=0.):
+def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0.):
     '''
     From a given pdf randomly select some time delays
 
@@ -183,48 +166,24 @@ def selectRandomSampleOfTimeDelays( nSamples,  trueDistribution=False,\
     realWorldInterpolator = \
       hubbleModel.hubbleInterpolator( )
     
-    realWorldInterpolator.getTrainingData('pickles/trainingDataForObs.pkl')
+    realWorldInterpolator.getTrainingData('pickles/trainingDataForObsWithMass.pkl')
 
     realWorldInterpolator.getTimeDelayModel()
 
-    
-
-
-    
     if minimumTimeDelay == 0:
         minimumTimeDelay = 1e-3
         
     logMinimumTimeDelay = np.log10(minimumTimeDelay)
 
-    if trueDistribution:
-        pklFileName = \
-      '../output/CDM/selectionFunction/'+\
-      'allHalosFiducialCosmology.pkl'
-        finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
-
-    if differentHalo is not None:
-      pklFileName = \
-        '../output/CDM/selectionFunction/SF_%s_%i_lsst.pkl' \
-        % (differentHalo, hubbleParameter)
-      
-      finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
-
     interpolateToTheseTimes= np.linspace(-3, 3, 1e6)
       
-    if trueDistribution | ( differentHalo is not None) :
-
-        interpolatedProbClass = CubicSpline( finalMergedPDFdict['x'], \
-                                             finalMergedPDFdict['y'])
-
-        interpolatedProb = interpolatedProbClass( interpolateToTheseTimes)
-    else:
-        theta = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., \
-                     'OmegaL':0.7, 'zLens':0.56, 'densityProfile':-1.75}
-        interpolatedCumSum = \
-          realWorldInterpolator.predictCDF( interpolateToTheseTimes, \
-                                                  theta )
-        interpolatedProb = undoCumSum( interpolatedCumSum)
-      
+    inputParams = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., 'OmegaL':0.7, \
+        'zLens':0.4, 'densityProfile':-1.75, 'totalMass':11.5}
+        
+    interpolatedCumSum = \
+          realWorldInterpolator.predictCDF( interpolateToTheseTimes, inputParams )
+          
+    interpolatedProb = undoCumSum( interpolatedCumSum)
       
     interpolatedProb[interpolatedProb<0] = 0
     interpolatedProb /= np.sum(interpolatedProb)

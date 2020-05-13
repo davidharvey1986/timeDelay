@@ -37,9 +37,9 @@ def main():
     hubbleInterpolatorJustH0 = \
       hubbleModel.hubbleInterpolator( inputFeaturesToTrain=['H0'], \
                                         nSubSamples=1)
-    hubbleInterpolatorJustH0.getTrainingData('exactPDFpickles/trainingDataJustH0.pkl')
+    hubbleInterpolatorJustH0.getTrainingData('exactPDFpickles/withMass.pkl')
 
-    hubbleInterpolatorJustH0.getTimeDelayModel(modelFile='pickles/justH0.pkl')
+    hubbleInterpolatorJustH0.getTimeDelayModel(modelFile='pickles/withMass.pkl')
     interpolatedCumSumJustH0 = \
       hubbleInterpolatorJustH0.predictPDF( interpolateToTheseTimes, theta )
     nSamplesToCheck = 1000

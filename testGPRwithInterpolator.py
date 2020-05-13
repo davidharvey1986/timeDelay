@@ -32,9 +32,9 @@ def main():
     hubbleInterpolator = \
       hubbleModel.hubbleInterpolator( )
       
-    hubbleInterpolator.getTrainingData('exactPDFpickles/noCosmology.pkl')
+    hubbleInterpolator.getTrainingData('exactPDFpickles/noCosmologyWithMass.pkl')
 
-    hubbleInterpolator.getTimeDelayModel(modelFile='pickles/noCosmology.pkl')
+    hubbleInterpolator.getTimeDelayModel(modelFile='pickles/noCosmologyWithMass.pkl')
     
 
     allDistributions = \
@@ -161,21 +161,22 @@ def getBestParsForGPR():
 
 def plotAllDefaultCosmologies():
 
-    hubbleInterpolator = \
-      hubbleModel.hubbleInterpolator( )
+    hubbleInterpolator = hubbleModel.hubbleInterpolator( regressorNoiseLevel=1e0)
       
-    hubbleInterpolator.getTrainingData('exactPDFpickles/noCosmology.pkl')
+    hubbleInterpolator.getTrainingData('exactPDFpickles/noCosmologyWithMass.pkl')
 
-    hubbleInterpolator.getTimeDelayModel(modelFile='pickles/noCosmology.pkl')
+    hubbleInterpolator.getTimeDelayModel()
     for i in np.arange(hubbleInterpolator.pdfArray.shape[0]):
         plt.plot(hubbleInterpolator.timeDelays, \
                 hubbleInterpolator.pdfArray[i,:], color='grey', alpha=0.5)
         inputParams = cp(hubbleInterpolator.fiducialCosmology)
-        print(inputParams['H0'])
+       
         inputParams['H0'] /= 100.
         inputParams['zLens'] = hubbleInterpolator.features['zLens'][i]
         inputParams['densityProfile'] = \
-          hubbleInterpolator.features['densityProfile'][i]                                                       
+          hubbleInterpolator.features['densityProfile'][i]
+        inputParams['totalMass'] = \
+          hubbleInterpolator.features['totalMass'][i]   
         predict = \
           hubbleInterpolator.predictCDF(hubbleInterpolator.timeDelays, inputParams)
         plt.plot(hubbleInterpolator.timeDelays, predict, color='red', alpha=0.5)
@@ -195,4 +196,5 @@ def plotAllDefaultCosmologies():
                 
     
 if __name__ == '__main__':
+    #main()
     plotAllDefaultCosmologies()
