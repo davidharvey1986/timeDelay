@@ -105,7 +105,8 @@ class hubbleInterpolator:
 
             fileName = finalMergedPDFdict['fileNames'][0]
             
-            totalMassForHalo = getDensity.getTotalMass( fileName, rGrid=rGrid)
+            totalMassForHalo = \
+              getDensity.getTotalMass( fileName, rGrid=rGrid)
             
             zLensStr = fileName.split('/')[-2]
             zLens = np.float(zLensStr.split('_')[1])
@@ -216,6 +217,7 @@ class hubbleInterpolator:
         defaultFileName = None
         featureDtype = [ (i, float) for i in cosmoKeys]
         self.cosmologyFeatures = np.array([], dtype=featureDtype)
+        
         for iDistribution in allDistributions:
 
             
