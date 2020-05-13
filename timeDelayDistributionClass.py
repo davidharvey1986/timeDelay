@@ -27,7 +27,7 @@ class timeDelayDistribution:
     def __init__( self, inputJsonFileName, \
                       timeDelayBins=None, \
                       outputPklFile=None, \
-                     cosmology=None,\
+                     cosmology={},\
                       zLens=None):
                       
         self.cosmology={'H0':70, 'OmegaM':0.3, 'OmegaK':0., \

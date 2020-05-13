@@ -235,7 +235,7 @@ def saveAllRedshifts( rerun=False, integrate=False):
         
       
     
-def combineJsonFiles( listOfJsonFiles, cosmology=None, zLens=None):
+def combineJsonFiles( listOfJsonFiles, cosmology={}, zLens=None):
     '''
     Combine the given list of Json Files into a single 
     histogram.

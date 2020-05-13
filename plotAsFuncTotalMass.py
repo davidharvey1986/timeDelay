@@ -27,14 +27,14 @@ def main( ):
     nHalos = []
     RMS = []
     for iHalo in allFiles:
-        pdf = combineJsonFiles([iHalo], newHubbleParameter=100.)
+        pdf = combineJsonFiles([iHalo])
  
  
  
         nHalosInField = substructure( iHalo ) 
         nHalos.append(nHalosInField)
      
-        totalMassForHalo = getTotalMass( iHalo, rGrid=rGrid)\
+        totalMassForHalo = getTotalMass( iHalo, rGrid=rGrid)
 
         totalMass.append(totalMassForHalo)
 

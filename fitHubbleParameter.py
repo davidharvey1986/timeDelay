@@ -40,7 +40,7 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
    
     prior = priorOnParameters( thetaDict, hubbleInterpolator )
     
-    prob = 2.*np.log10(1./np.sum((cumsumYtheory - yTrue)**2))
+    prob = 1./np.sum((cumsumYtheory - yTrue)**2)
 
     if np.isnan(prob):
         pdb.set_trace()

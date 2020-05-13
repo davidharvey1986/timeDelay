@@ -33,17 +33,17 @@ def nonPerfectFittingFunction(nComponents=5, inputHubbleParameter=0.7):
     #              label="Exact PDF")
 
     #####
-    
-    
-    sampleSizes, estimates = \
+    '''
+    '''
+    sampleSizesNoMin, estimatesNoMin = \
      getPredictedConstraints(trueDistribution=False)
 
 
-    plt.errorbar( sampleSizes, estimates/inputHubbleParameter*100., \
+    plt.errorbar( sampleSizesNoMin, estimatesNoMin/inputHubbleParameter*100., \
                   label=r'$\Delta t_{\rm min} = 0$ days', color='red')
                   
-    constraints3000 = np.interp( 3000, sampleSizes, estimates)
-    constraints400 = np.interp( 400, sampleSizes, estimates)
+    constraints3000 = np.interp( 3000, sampleSizesNoMin, estimatesNoMin)
+    constraints400 = np.interp( 400, sampleSizesNoMin, estimatesNoMin)
     
     ########
     sampleSizes, estimates = \
@@ -53,8 +53,8 @@ def nonPerfectFittingFunction(nComponents=5, inputHubbleParameter=0.7):
                 label=r'$\Delta t_{\rm min} = 10$ days', color='blue')
     #######
     
-
-
+    
+    pdb.set_trace()
     
     
     plt.plot( sampleSizes, np.ones(len(sampleSizes))+1, 'c--', \
@@ -78,7 +78,7 @@ def nonPerfectFittingFunction(nComponents=5, inputHubbleParameter=0.7):
     plt.savefig('../plots/statisticalErrorOnHubble.pdf')
     plt.show()
 
-def getPredictedConstraints(nIterations = 100,\
+def getPredictedConstraints(nIterations = 10,\
                                 nSampleSizes = 11,\
                                 exactIndex=False,\
                                 trueDistribution=False,\
@@ -88,7 +88,7 @@ def getPredictedConstraints(nIterations = 100,\
 
 
     hubbleInterpolaterClass = \
-          hubbleModel.hubbleInterpolator( minimumTimeDelay=minimumTimeDelay)
+          hubbleModel.hubbleInterpolator( minimumTimeDelay=minimumTimeDelayx)
     
     if minimumTimeDelay > 0:
         hubbleInterpolaterClass.getTrainingData(pklFile='picklesMinimumDelay/trainingData.pkl')
@@ -130,13 +130,17 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
     samples = None
     
     if trueDistribution:
-        pklFile = 'picklesTrueDistribution/multiFitSamples_%i.pkl' % iSampleSize
+        pklFile = 'picklesTrueDistribution/multiFitSamples_%i.pkl' \
+          % iSampleSize
     elif differentHalo is not None:
-        pklFile = 'picklesDifferentHalo/multiFitSamples_%s_%i.pkl' % (differentHalo, iSampleSize)
+        pklFile = 'picklesDifferentHalo/multiFitSamples_%s_%i.pkl' \
+          % (differentHalo, iSampleSize)
     elif minimumTimeDelay > 0:
-        pklFile = 'picklesMinimumDelay/multiFitSamples_%i.pkl' % (iSampleSize)
+        pklFile = 'picklesMinimumDelay/multiFitSamples_%i.pkl' \
+          % (iSampleSize)
     else:
-        pklFile = 'exactPDFpickles/multiFitSamples_%i.pkl' % iSampleSize
+        pklFile = 'exactPDFpickles/multiFitSamples_%i.pkl' \
+          % iSampleSize
     
 
     if os.path.isfile(pklFile):
@@ -146,9 +150,9 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
         print("Iteration: %i/%i" % (iIteration+1, nIterations))
         selectedTimeDelays = \
               selectRandomSampleOfTimeDelays( iSampleSize, \
-                 hubbleInterpolaterClass,\
-                    trueDistribution=trueDistribution,differentHalo=differentHalo,\
-                                minimumTimeDelay=minimumTimeDelay)
+                        trueDistribution=trueDistribution,\
+                        differentHalo=differentHalo,\
+                        minimumTimeDelay=minimumTimeDelay)
       
         fitHubbleClass = \
               fitHubble.fitHubbleParameterClass( selectedTimeDelays, \
@@ -169,13 +173,23 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
     return samples
 
 
-def selectRandomSampleOfTimeDelays( nSamples,  \
-                        hubbleInterpolaterClass, trueDistribution=False,\
+def selectRandomSampleOfTimeDelays( nSamples,  trueDistribution=False,\
                         differentHalo=None, minimumTimeDelay=0.):
     '''
     From a given pdf randomly select some time delays
 
     '''
+    #Real world inerpolator
+    realWorldInterpolator = \
+      hubbleModel.hubbleInterpolator( )
+    
+    realWorldInterpolator.getTrainingData('pickles/trainingDataForObs.pkl')
+
+    realWorldInterpolator.getTimeDelayModel()
+
+    
+
+
     
     if minimumTimeDelay == 0:
         minimumTimeDelay = 1e-3
@@ -195,7 +209,7 @@ def selectRandomSampleOfTimeDelays( nSamples,  \
       
       finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
 
-    interpolateToTheseTimes= np.linspace(np.log10(minimumTimeDelay), 3, 1e6)
+    interpolateToTheseTimes= np.linspace(-3, 3, 1e6)
       
     if trueDistribution | ( differentHalo is not None) :
 
@@ -207,7 +221,7 @@ def selectRandomSampleOfTimeDelays( nSamples,  \
         theta = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., \
                      'OmegaL':0.7, 'zLens':0.56, 'densityProfile':-1.75}
         interpolatedCumSum = \
-          hubbleInterpolaterClass.predictCDF( interpolateToTheseTimes, \
+          realWorldInterpolator.predictCDF( interpolateToTheseTimes, \
                                                   theta )
         interpolatedProb = undoCumSum( interpolatedCumSum)
       
@@ -217,34 +231,35 @@ def selectRandomSampleOfTimeDelays( nSamples,  \
 
     #Interpolate the p
     
-    
+
     logTimeDelays = \
       np.random.choice(interpolateToTheseTimes, \
                     p=interpolatedProb, size=np.int(nSamples))
+
+    logTimeDelays = logTimeDelays[ logTimeDelays>logMinimumTimeDelay ]
     
-    bins = np.max([20, np.int(nSamples/100)])
+    bins = np.linspace(-1,4,1000)
     y, x = np.histogram(logTimeDelays, \
-                    bins=np.linspace(-1,4,1000), density=True)
+                    bins=bins, density=True)
 
     dX = (x[1] - x[0])
     xcentres = (x[1:] + x[:-1])/2.
-    #if trueDistribution:
-    #    xcentres += 0.0404
         
     error = np.sqrt(y*nSamples)/nSamples
 
     cumsumY = np.cumsum( y )  / np.sum(y)
     cumsumYError = np.sqrt(np.cumsum(error**2)/(np.arange(len(error))+1))
-    #cumsumYError = np.ones(len(y))/nSamples/2.
+
     xcentres += dX/2.
-    pdb.set_trace()
+
     return {'x':xcentres, 'y':cumsumY,  'error':cumsumYError}
 
 def getModeAndError( samples ):
 
+    
 
-    nIterations = 100 #np.int(samples.shape[0] / itPs)
-    itPs = np.int(samples.shape[0]/nIterations)
+    itPs = 22000 # np.int(samples.shape[0]/nIterations)
+    nIterations = np.int(samples.shape[0] / itPs)
     
     maxLike = []
     meanLike = []
@@ -253,7 +268,7 @@ def getModeAndError( samples ):
         iSample = samples[i*itPs:(i+1)*itPs]
         y, x = \
           np.histogram( iSample, \
-                            bins=np.linspace(0.5, 1., 50),  \
+                            bins=np.linspace(0.6, 0.8, 50),  \
                         density=True)
         
         xc = (x[1:]+x[:-1])/2.
@@ -275,10 +290,11 @@ def getModeAndError( samples ):
 
     if np.isfinite(error) == False:
         pdb.set_trace()
+    
     errorOnError = np.std(np.array(indivError)) /np.sqrt(len(indivError))
     
-    
-    return np.mean(maxLike),np.std(meanLike)
+
+    return np.mean(maxLike), np.median(indivError)
 
 def undoCumSum(cumulative):
     output = [0] * len(cumulative)

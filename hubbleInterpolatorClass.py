@@ -24,12 +24,16 @@ class hubbleInterpolator:
     '''
 
     def __init__( self, nPrincipalComponents=9, minimumTimeDelay=0.001,\
-                      allDistributionsPklFile=None, regressorNoiseLevel=1.5e-2):
+                      allDistributionsPklFile=None, massCut=1e16, \
+                      regressorNoiseLevel=1.5e-2):
         '''
         inputTrainFeatures: a list of the cosmology keys to train over
+        minimmumTimeDelay: should we expect a minimum possibly observed time delay 
+        omitHalo: a list of halo names to be omitted from the fitting
+        
         '''
         self.regressorNoiseLevel = regressorNoiseLevel
-        
+        self.massCut = massCut
         self.logMinimumTimeDelay = np.log10(np.max([minimumTimeDelay, 0.001]))
         self.nPrincipalComponents = nPrincipalComponents
 
@@ -100,6 +104,9 @@ class hubbleInterpolator:
             
 
             fileName = finalMergedPDFdict['fileNames'][0]
+            
+            totalMassForHalo = getDensity.getTotalMass( fileName, rGrid=rGrid)
+            
             zLensStr = fileName.split('/')[-2]
             zLens = np.float(zLensStr.split('_')[1])
             finalMergedPDFdict['y'] = \
