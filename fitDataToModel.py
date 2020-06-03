@@ -8,7 +8,7 @@ from hubbleInterpolatorClass import *
 from scipy.stats import norm
 import matplotlib.lines as mlines
 from matplotlib import rcParams
-rcParams["font.size"] = 16
+rcParams["font.size"] = 12
 from scipy.ndimage import gaussian_filter as gauss
 import lensing_parameters as lensing
 from matplotlib import colors as mcolors
@@ -20,17 +20,21 @@ def monteCarlo( nMonteCarlo=100 ):
 
     allSamples  = None
     maxLike = []
+    labels = \
+        [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',\
+            r'$\alpha$', r'$log(M(<5kpc)/M_\odot)$',\
+           r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$' ]
+           
     for iMonteCarlo in np.arange(nMonteCarlo):
-        pklFile = 'pickles/%i_monteCarlo_withMass.pkl' % iMonteCarlo
+        pklFile = '%i_monteCarlo_withMass_LCDM.pkl' % iMonteCarlo
 
         samples = main(pklFile=pklFile, monteCarlo=True)
-        labels = \
-          [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$', \
-           r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$', r'$Sigma' ]
+
         if allSamples is None:
             allSamples = samples
         else:
             allSamples = np.vstack((allSamples, samples))
+            
         y, x = np.histogram(samples[:,0], bins=100)
         xc = (x[1:] + x[:-1])/2.
         
@@ -39,21 +43,27 @@ def monteCarlo( nMonteCarlo=100 ):
     nsamples = allSamples.shape[0]
     #plotMockedData( figcorner)
     ndim = allSamples.shape[1]
-    figcorner, axarr = plt.subplots(ndim,ndim,figsize=(8,8))
+    figcorner, axarr = plt.subplots(ndim,ndim,figsize=(12,12))
 
     corner.corner(allSamples,  levels=[0.68], bins=20,\
                     plot_datapoints=False, labels=labels, fig=figcorner,\
                       weights=np.ones(nsamples)/nsamples, color='black', \
-                      hist_kwargs={'linewidth':1.},\
-                      contour_kwargs={'linewidths':1.}, smooth=True)
+                      hist_kwargs={'linewidth':3.},\
+                      contour_kwargs={'linewidths':3.}, smooth=True)
+                      
     for i in range(samples.shape[1]):
         lo, med, hi = np.percentile(allSamples[:,i],[16,50,84])
         print( med, med-lo, hi-med)
-    pdb.set_trace()
+
+
+    figcorner.savefig('../plots/LCDMresults.pdf')
     plt.show()
         
-def main(pklFile='pickles/fitDataToModel_withMass.pkl', monteCarlo=False):
-    if not os.path.isfile( pklFile ):   
+def main(pklFile='fitDataToModel_withMass_LCDMk_noZ0.6.pkl', \
+             monteCarlo=False):
+    
+    if not os.path.isfile( 'pickles/monteCarlosOfData/%s' % pklFile ):
+        
         selectedTimeDelays = getObservations(monteCarlo=monteCarlo)
 
         dataSelectionFunction = '../output/CDM/selectionFunction/SF_data.pkl'
@@ -72,11 +82,11 @@ def main(pklFile='pickles/fitDataToModel_withMass.pkl', monteCarlo=False):
           fitHubble.fitHubbleParameterClass( selectedTimeDelays, \
                                     hubbleInterpolaterClass)
 
-        pkl.dump(fitHubbleClass.samples,open(pklFile,'wb'))
+        pkl.dump(fitHubbleClass.samples,open('pickles/monteCarlosOfData/%s' % pklFile,'wb'))
         samples = fitHubbleClass.samples
     else:
         
-        samples = pkl.load(open(pklFile,'rb'))
+        samples = pkl.load(open( 'pickles/monteCarlosOfData/%s' % pklFile,'rb'))
 
     if monteCarlo:
         return samples
@@ -86,7 +96,7 @@ def main(pklFile='pickles/fitDataToModel_withMass.pkl', monteCarlo=False):
 
     parRange = [[0.55,0.8],[0.45,0.6],[-2.,-1.6]]
     labels = \
-      [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$', r'$M_t$'\
+      [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$', r'$log(M(<5kpc)/M_\odot)$'\
            r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$', r'$Sigma' ]
     nsamples = samples.shape[0]
     #plotMockedData( figcorner)
@@ -174,7 +184,6 @@ def getObservations(nBins=20, monteCarlo=False):
                     
     dX = (x[1] - x[0])
     xcentres = (x[1:] + x[:-1])/2.
-    #xcentres += 1.3*dX
         
     error = np.sqrt(y*nSamples)/nSamples
 
@@ -194,14 +203,68 @@ def getObservations(nBins=20, monteCarlo=False):
                                 z0=data['zl'][ind][i])\
                for i in range(len(data[ind]))])
     ds = np.array([ lensing.ang_distance(i) for i in data['zs'][ind]])
-    print("GAUSS PRIOR",norm.fit(data['zl']))
+    print("GAUSS PRIOR", np.sum(dls/(ds*dl)*data['zl'][ind])/np.sum(dls/(ds*dl)))
 
-    #-1.8*dX
+
     return {'x':xcentres, 'y':cumsumY, 'error':cumsumYError}
 
+def writeResultsToTex(nMonteCarlo=100):
 
+
+    models = ['Fixed', '$\Lambda$CDM', '$\Lambda$CDMk']
+    pklEndings = ['', '_LCDM','_LCDMk']
+
+    labels = \
+        ['Model', r'$H_0/($km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$', r'log$(M(<5$kpc$)/M_\odot)$',\
+           r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$' ]
+
+    resultsFile = open('../plots/results.tex', 'w')
+    resultsFile.write('\\begin{table*}\n')
+    resultsFile.write('\\begin{center}\n')
+    resultsFile.write('\caption{\label{tab:haloStats}}\n')
+    resultsFile.write('\\begin{tabular}{cccccccc}\n')
+    resultsFile.write('\hline\n')
+    resultsFile.write('&'.join(labels)+'\\\\\n')
+    resultsFile.write('\hline\n')
+    
+    for iModel in np.arange(len(models)):
+        allSamples = None
+
+        line = models[iModel]
+        for iMonteCarlo in np.arange(nMonteCarlo):
+            pklFile = '%i_monteCarlo_withMass%s.pkl' \
+              % (iMonteCarlo,pklEndings[iModel])
+
+            samples = main(pklFile=pklFile, monteCarlo=True)
+
+            if allSamples is None:
+                allSamples = samples
+            else:
+                allSamples = np.vstack((allSamples, samples))
+
+        for i in range(allSamples.shape[1]):
+            
+            lo, med, hi = np.percentile(allSamples[:,i],[16,50,84])
+            if i == 0 :
+                lo *= 100
+                med *= 100
+                hi *= 100
+            
+            line = line+'& $ %0.2g_{-%0.1g}^{+%0.1g} $ ' % \
+              (med, med-lo, hi-med)
+        line = line+'\\\\ \n'
+        resultsFile.write(line)
+
+    resultsFile.write('\hline\n')
+    resultsFile.write('\end{tabular}\n')
+    resultsFile.write('\end{center}\n')
+    resultsFile.write('\\end{table*}\n')
+
+    resultsFile.close()
 if __name__ == '__main__':
-    monteCarlo()
+    #writeResultsToTex()
     #main()
+    monteCarlo()
+    
     
     

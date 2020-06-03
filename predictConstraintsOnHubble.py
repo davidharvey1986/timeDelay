@@ -15,75 +15,95 @@ import hubbleInterpolatorClass as hubbleModel
 from scipy.stats import norm
 import matplotlib.lines as mlines
 from matplotlib import rcParams
-rcParams["font.size"] = 16
+rcParams["font.size"] = 12
 from scipy.ndimage import gaussian_filter as gauss
-
+from matplotlib import gridspec
 import time
 
     
     
-def nonPerfectFittingFunction(nComponents=5, inputHubbleParameter=0.7):
-    fig = plt.figure(figsize=(10,6))
-
-    #####
-    #sampleSizes, estimates = \
-    #  getPredictedConstraints(inputHubbleParameter)
-    #estimates /=inputHubbleParameter/100.
-    #plt.plot( sampleSizes, estimates,\
-    #              label="Exact PDF")
-
-    #####
-    '''
-    '''
-    sampleSizesNoMin, estimatesNoMin = getPredictedConstraints()
-
-    plt.errorbar( sampleSizesNoMin, estimatesNoMin/inputHubbleParameter*100., \
-                  label=r'$\Delta t_{\rm min} = 0$ days', color='red')
-                  
-    constraints3000 = np.interp( 3000, sampleSizesNoMin, estimatesNoMin)
-    constraints400 = np.interp( 400, sampleSizesNoMin, estimatesNoMin)
-    '''
-    ########
-    sampleSizes, estimates = \
-      getPredictedConstraints(minimumTimeDelay=10)
-      
-    plt.errorbar( sampleSizes, estimates/inputHubbleParameter*100., \
-                label=r'$\Delta t_{\rm min} = 10$ days', color='blue')
-    #######
+def main():
     
     
-    '''
+    fig = plt.figure(figsize=(5,13))
     
+    labels = \
+        [r'$H_0',r'$z_{lens}$',\
+            r'$\alpha$', r'$log(M)$',\
+           r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$' ]
+
+    gs = None
+
+    inputPar = [0.7, 0.4, 1.75, 11.05, 0.3, 0.7]
+    colors = ['red','blue']
+
+    lims = [(0.,6.), (0.,40.), (0., 8.), (0.,1.0), (5.,11.5), (1.5,5.)]
     
-    plt.plot( sampleSizes, np.ones(len(sampleSizes))+1, 'c--', \
-                  label='Current systematic limit')
+    for iColor, minTime in enumerate([0., 10.]):
+        sampleSizes, estimates = \
+            getPredictedConstraints(minimumTimeDelay=minTime)
+
+        if gs is None:
+            gs = gridspec.GridSpec( estimates.shape[0], 1)
+        for iPar in range(estimates.shape[0]):
+            ax = plt.subplot(gs[iPar,0])
+
+            ax.errorbar( sampleSizes*(1.+iColor/50.), \
+                    estimates[iPar, 0,:]/inputPar[iPar]*100., \
+                    yerr=estimates[iPar, 1,:]/inputPar[iPar]*100.,\
+                  label=r'$\Delta t_{\rm min} = 0$ days', \
+                      color=colors[iColor], fmt='o', capsize=3)
+
+            if minTime == 10:
+                constraints3000 = \
+                  np.interp( 3000, sampleSizes, \
+                                 estimates[iPar, 0,:]/inputPar[iPar]*100.)
+                constraints400 = \
+                  np.interp( 400, sampleSizes, \
+                                 estimates[iPar, 0,:])/inputPar[iPar]*100.
+     
+  
+                ax.plot( [400,400], [0,100], 'k:', \
+                             label='LSST (Conservative)')
+                ax.plot( [1e1,2e4], [constraints400,constraints400], 'k:')
 
     
-    plt.plot( [3000,3000], [0,10], 'k--', label='LSST (Optimistic)')
-    plt.plot( sampleSizes, np.zeros(len(sampleSizes))+constraints3000,\
-                  'k--')
-    plt.plot( [400,400], [0,10], 'k:', label='LSST (Conservative)')
-    plt.plot( sampleSizes, np.zeros(len(sampleSizes))+constraints400,\
-                  'k:')
-    #plt.yscale('log')
-    plt.xscale('log')
-    plt.legend()
-    plt.ylim(0., 6)
-    plt.xlim(1e2, 1e4)
+                ax.plot( [3000,3000], [0,100], 'k--', \
+                             label='LSST (Optimistic)')
+                ax.plot( [1e1,2e4], [constraints3000,constraints3000],\
+                             'k--')
 
-    plt.xlabel('nSamples')
-    plt.ylabel(r'Percentage error on $H_0$')
+            if iPar == 0:
+                ax.plot( [1e1,2e4], [4.,4.], 'c--', label='This work')
+
+                ax.plot(  [1e1,1e4], [1.5,1.5], 'r--', \
+                        label='Limit of current model')
+
+            
+        #plt.yscale('log')
+            ax.set_xscale('log')
+            #ax.legend()
+            ax.set_ylim(lims[iPar])
+            ax.set_xlim(50, 4.5e3)
+            if iPar != estimates.shape[0] -1:
+                ax.set_xticklabels([])
+            ax.set_xlabel('nSamples')
+            ax.set_ylabel(r'$\Delta$ %s/%s' % (labels[iPar],labels[iPar]))
+    fig.subplots_adjust(hspace=0)
+    
+    
+    fig.align_ylabels()
     plt.savefig('../plots/statisticalErrorOnHubble.pdf')
     plt.show()
 
-def getPredictedConstraints(nIterations = 10,\
-                                nSampleSizes = 11,\
+def getPredictedConstraints(nIterations = 100,\
+                                nSampleSizes = 16,\
                                 minimumTimeDelay=0.):
 
 
-
+    
     hubbleInterpolaterClass = \
-          hubbleModel.hubbleInterpolator( minimumTimeDelay=minimumTimeDelay)
+          hubbleModel.hubbleInterpolator(minimumTimeDelay=minimumTimeDelay )
     
     if minimumTimeDelay > 0:
         hubbleInterpolaterClass.getTrainingData(pklFile='picklesMinimumDelay/trainingDataWithMass.pkl')
@@ -92,13 +112,13 @@ def getPredictedConstraints(nIterations = 10,\
 
     hubbleInterpolaterClass.getTimeDelayModel()
   
-    sampleSizes = 10**np.linspace(2,4,nSampleSizes)
+    sampleSizes = 10**np.linspace(1,4,nSampleSizes)
     
-    estimates = np.zeros(nSampleSizes)
+    estimates = None 
 
 
     #Loop through each sample size
-    for i, iSampleSize in enumerate(sampleSizes):
+    for i, iSampleSize in enumerate(sampleSizes[:-1]):
         print("Sample Size: %i" % (iSampleSize))
 
         samples = \
@@ -106,10 +126,14 @@ def getPredictedConstraints(nIterations = 10,\
                                          hubbleInterpolaterClass,\
                                          minimumTimeDelay=minimumTimeDelay)
 
-                
-        median, error =  getModeAndError( samples[:,0])
+        if estimates is None:
+            estimates = np.zeros((samples.shape[1], 2, nSampleSizes))
 
-        estimates[i] = error
+        for iPar in range(samples.shape[1]):
+            median, error =  getModeAndError( samples[:,iPar])
+
+            estimates[iPar, 0, i] = median
+            estimates[iPar, 1, i] = error
         
     
     return sampleSizes, estimates
@@ -163,11 +187,20 @@ def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0.):
 
     '''
     #Real world inerpolator
-    realWorldInterpolator = \
-      hubbleModel.hubbleInterpolator( )
     
-    realWorldInterpolator.getTrainingData('pickles/trainingDataForObsWithMass.pkl')
+    dataSelectionFunction = '../output/CDM/selectionFunction/SF_data.pkl'
+          
+    realWorldInterpolator = \
+          hubbleModel.hubbleInterpolator(allDistributionsPklFile=dataSelectionFunction,\
+                                 regressorNoiseLevel=1e-3)
 
+    
+    #realWorldInterpolator = \
+    #  hubbleModel.hubbleInterpolator( )
+    
+    #realWorldInterpolator.getTrainingData('pickles/trainingDataWithMass.pkl')
+    
+    realWorldInterpolator.getTrainingData('pickles/trainingDataWithMassForDataTrainingSet.pkl')
     realWorldInterpolator.getTimeDelayModel()
 
     if minimumTimeDelay == 0:
@@ -178,7 +211,7 @@ def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0.):
     interpolateToTheseTimes= np.linspace(-3, 3, 1e6)
       
     inputParams = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., 'OmegaL':0.7, \
-        'zLens':0.4, 'densityProfile':-1.75, 'totalMass':11.5}
+        'zLens':0.40, 'densityProfile':-1.75, 'totalMass':11.1}
         
     interpolatedCumSum = \
           realWorldInterpolator.predictCDF( interpolateToTheseTimes, inputParams )
@@ -195,11 +228,11 @@ def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0.):
       np.random.choice(interpolateToTheseTimes, \
                     p=interpolatedProb, size=np.int(nSamples))
 
-    logTimeDelays = logTimeDelays[ logTimeDelays>logMinimumTimeDelay ]
+    logTimeDelays = logTimeDelays[ logTimeDelays > logMinimumTimeDelay ]
     
     bins = np.linspace(-1,4,1000)
-    y, x = np.histogram(logTimeDelays, \
-                    bins=bins, density=True)
+    
+    y, x = np.histogram(logTimeDelays, bins=bins, density=True)
 
     dX = (x[1] - x[0])
     xcentres = (x[1:] + x[:-1])/2.
@@ -219,25 +252,22 @@ def getModeAndError( samples ):
 
     itPs = 22000 # np.int(samples.shape[0]/nIterations)
     nIterations = np.int(samples.shape[0] / itPs)
-    
+    #print("nIteration %i" % nIterations)
     maxLike = []
     meanLike = []
     indivError = []
     for i in range(nIterations):
         iSample = samples[i*itPs:(i+1)*itPs]
-        y, x = \
-          np.histogram( iSample, \
-                            bins=np.linspace(0.6, 0.8, 50),  \
-                        density=True)
+        y, x = np.histogram( iSample, bins=50,  density=True)
         
         xc = (x[1:]+x[:-1])/2.
         #dX =  x[1] - x[0]
         maxLike.append(xc[np.argmax(y)])
-        meanLike.append(np.mean(iSample))
+        meanLike.append(np.median(iSample))
 
         
         indivError.append( np.std( iSample ))
-
+        
 
 
     #error = np.sqrt(np.sum((np.array(maxLike)-0.7)**2)/len(maxLike))
@@ -247,13 +277,11 @@ def getModeAndError( samples ):
     #error  = np.std(samples[(samples>0.65) & (samples<0.8)])
     error = np.nanmedian(np.array(indivError))
 
-    if np.isfinite(error) == False:
-        pdb.set_trace()
-    
-    errorOnError = np.std(np.array(indivError)) /np.sqrt(len(indivError))
-    
+   
+    errorOnError = np.std(np.array(indivError))
 
-    return np.mean(maxLike), np.median(indivError)
+
+    return np.std(maxLike), errorOnError
 
 def undoCumSum(cumulative):
     output = [0] * len(cumulative)
@@ -270,5 +298,5 @@ def reportParameters( samples ):
 
 
 if __name__ == '__main__':
-    nonPerfectFittingFunction()
+    main()
 ##

@@ -3,80 +3,70 @@ from matplotlib import pyplot as plt
 import numpy as np
 from matplotlib import rcParams
 rcParams["font.size"] = 16
+import ipdb as pdb
 def main():
     '''
     Create a plot of the integrated probability distribution over all redshift and lenses
     for different hubble parameters
     '''
-    #fig = plt.figure(figsize=(5,5))
 
     plt.figure(figsize=(8,6))
 
-    #gs = gridspec.GridSpec(10,1)
 
-    #axisA = plt.subplot( gs[0:6,0])
-    #axisB = plt.subplot( gs[7:,0])
-    #axisC = axisB.twinx()
     axisA = plt.gca()
     colors = ['r','b','g','c','orange','k','m','y','pink']
-
-
-    haloNames = ['B002','B005','B008','B009']
-    ratioYearToMonth = []
-    ratioYearToMonthError = []
-    beta = []
-    betaError = []
-
-    for iColor, iHalo in enumerate(haloNames):
-        pklFileName = '../output/CDM/selectionFunction/SF_%s_70_lsst.pkl' % iHalo
+    allDistributionsPklFile = \
+      "../output/CDM/selectionFunction/"+\
+      "sparselyPopulatedParamSpace.pkl"
+    allHalos = pkl.load(open(allDistributionsPklFile,'rb'))
     
-        finalMergedPDFdict = pkl.load(open(pklFileName,'rb'))
-        for i in finalMergedPDFdict.keys():
-            if 'y' in i:
-                finalMergedPDFdict[i] =  1. - np.cumsum(finalMergedPDFdict[i])/np.sum(finalMergedPDFdict[i])
-        #finalMergedPDFdict['y'] /= np.max(finalMergedPDFdict['y'])
-        #finalMergedPDFdict['yError'] /= np.max(finalMergedPDFdict['y'])
-        #finalMergedPDFdict['yLensPlane'] /= np.max(finalMergedPDFdict['yLensPlane'])
+    haloDistributions = {'B002':None,\
+                         'B005':None,\
+                          'B008':None,\
+                            'B009':None}
 
-        #noLogErrorBar = finalMergedPDFdict['yError'] >  finalMergedPDFdict['y']
-        #finalMergedPDFdict['yError'][noLogErrorBar] = \
-        #  finalMergedPDFdict['y'][noLogErrorBar]*0.99
-          
-        axisA.fill_between(finalMergedPDFdict['x'], \
-                    finalMergedPDFdict['y'] - finalMergedPDFdict['yError']/2., \
-                    finalMergedPDFdict['y'] + finalMergedPDFdict['yError']/2., \
-                    color=colors[iColor], alpha=0.5)
-          
-        axisA.errorbar(finalMergedPDFdict['x'],finalMergedPDFdict['y'],\
-                    label=r"%s" % (iHalo), \
-                        color=colors[iColor])              
-       
+    fiducialCosmology = \
+       {'H0':70., 'OmegaM':0.3, 'OmegaL':0.7, 'OmegaK':0.}
+    cosmoKeys = fiducialCosmology.keys()
+    for iColor, iHalo in enumerate(allHalos):
+        doNotTrainThisSample =  \
+              np.any(np.array([fiducialCosmology[iCosmoKey] != \
+              iHalo['cosmology'][iCosmoKey] \
+              for iCosmoKey in cosmoKeys]))
 
-      
+        if doNotTrainThisSample:
+            continue
 
-        #axisB.errorbar( iColor+0.9, powerLawFitClass.params['params'][1], \
-        #                    yerr=powerLawFitClass.params['error'][1], \
-        #                    fmt='o', color=colors[iColor])
+        
+        haloName = iHalo['fileNames'][0].split('/')[-1].split('_')[0] 
 
-        #axisC.errorbar( iColor+1.1,  \
-        #               powerLawFitClass.getFittedPeakTimeAndError()[0],
-        #                    yerr= powerLawFitClass.getFittedPeakTimeAndError()[1], \
-        #                    fmt='*', color=colors[iColor])
+        iHalo['y'] =  1. - np.cumsum(iHalo['y'])/np.sum(iHalo['y'])
+        if haloDistributions[haloName] is None:
+            haloDistributions[haloName] = iHalo['y']
+        else:
+            haloDistributions[haloName] = \
+              np.vstack((haloDistributions[haloName], iHalo['y']))
+        
 
-    #axisB.set_xticks([1, 2, 3, 4])
-    #axisC.set_ylabel(r'log$(\Delta t_{\rm peak}$ / days )')
+    for iColor, iHaloName in enumerate(haloDistributions.keys()):
 
-    #axisB.set_xticklabels(haloNames)
+        median, low, high = np.percentile( haloDistributions[iHaloName], [50, 16, 84], axis=0)
+
+        axisA.plot(iHalo['x'],median, '--', \
+                    label=r"%s" % (iHaloName), \
+                        color=colors[iColor], lw=2)              
+        axisA.plot(iHalo['x'],low, '-', \
+                        color=colors[iColor], lw=1)
+        axisA.plot(iHalo['x'],high, '-', \
+                        color=colors[iColor], lw=1)  
+        axisA.fill_between(  iHalo['x'], low, high, \
+                                color=colors[iColor], alpha=0.1)
     axisA.legend()
-    #axisA.set_yscale('log')
- 
-    axisA.set_xlabel(r'log($\Delta T$/ days)', labelpad=-1)
-    axisA.set_ylabel(r'P(>log($\Delta T$/ days))')
+
+    axisA.set_xlabel(r'log($\Delta t$/ days)', labelpad=-1)
+    axisA.set_ylabel(r'P(>log($\Delta t$))')
     axisA.set_xlim(-1.,3.)
-    #axisB.set_xlabel('Halo Name')
-    #axisB.set_ylabel(r'$\beta$')
-    #axisA.set_ylim(1e-2,2.)
-    
+   
 
     plt.savefig('../plots/haloToHaloVariance.pdf')
     plt.show()

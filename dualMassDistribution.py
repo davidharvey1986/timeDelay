@@ -1,11 +1,8 @@
-
-
-
 '''
-I want to look at the sensitiit of the predictor to a range in masses by tranining on a mass cut
-and sampling away from that
+I want to prediuct the constraints on teh hubble parameter from the
+estiamted PDFs generated
 
-Assumpyion is that the training sample is smaller mass than the true sample
+I will fit a double powerLaw
 
 '''
 import plotAsFunctionOfDensityProfile as getDensity
@@ -25,8 +22,7 @@ import time
 
     
     
-def sensivitiyToDifferentHalo(nComponents=5, inputHubbleParameter=0.7):
-    
+def nonPerfectFittingFunction(nComponents=5, inputHubbleParameter=0.7):
     fig = plt.figure(figsize=(10,6))
 
     #####
@@ -39,13 +35,26 @@ def sensivitiyToDifferentHalo(nComponents=5, inputHubbleParameter=0.7):
     #####
     '''
     '''
-    sampleSizesNoMin, estimatesNoMin = getPredictedConstraints(massCut=11.2)
-
+    sampleSizesNoMin, estimatesNoMin = getPredictedConstraints()
 
     plt.errorbar( sampleSizesNoMin, estimatesNoMin/inputHubbleParameter*100., \
                   label=r'$\Delta t_{\rm min} = 0$ days', color='red')
                   
+    constraints3000 = np.interp( 3000, sampleSizesNoMin, estimatesNoMin)
+    constraints400 = np.interp( 400, sampleSizesNoMin, estimatesNoMin)
+    
+    
+    plt.plot( sampleSizes, np.ones(len(sampleSizes))+1, 'c--', \
+                  label='Current systematic limit')
 
+    
+    plt.plot( [3000,3000], [0,10], 'k--', label='LSST (Optimistic)')
+    plt.plot( sampleSizes, np.zeros(len(sampleSizes))+constraints3000,\
+                  'k--')
+    plt.plot( [400,400], [0,10], 'k:', label='LSST (Conservative)')
+    plt.plot( sampleSizes, np.zeros(len(sampleSizes))+constraints400,\
+                  'k:')
+    #plt.yscale('log')
     plt.xscale('log')
     plt.legend()
     plt.ylim(0., 6)
@@ -56,29 +65,29 @@ def sensivitiyToDifferentHalo(nComponents=5, inputHubbleParameter=0.7):
     plt.savefig('../plots/statisticalErrorOnHubble.pdf')
     plt.show()
 
-def getPredictedConstraints(nIterations = 2,nSampleSizes = 3, massCut=0.):
+def getPredictedConstraints(nIterations = 10, nSampleSizes = 11 ):
 
-    #this is what i will fit with, so this will training on things less than
-    #the mass cut
-    hubbleInterpolaterClass = hubbleModel.hubbleInterpolator( massCut=[0., massCut] )
+
+
+    hubbleInterpolaterClass = \
+          hubbleModel.hubbleInterpolator( )
     
-    hubbleInterpolaterClass.getTrainingData('pickles/trainingDataMassCutLower_%0.2f.pkl' % massCut )
+    hubbleInterpolaterClass.getTrainingData('pickles/trainingDataWithMass.pkl')
 
     hubbleInterpolaterClass.getTimeDelayModel()
-    
+  
     sampleSizes = 10**np.linspace(2,4,nSampleSizes)
     
     estimates = np.zeros(nSampleSizes)
 
 
     #Loop through each sample size
-    for i, iSampleSize in enumerate([10000]):
+    for i, iSampleSize in enumerate([100]):
         print("Sample Size: %i" % (iSampleSize))
 
         samples = \
           getMCMCchainForSamplesSize(iSampleSize, nIterations, \
-                                         hubbleInterpolaterClass,\
-                                         massCut=massCut)
+                                         hubbleInterpolaterClass)
 
                 
         median, error =  getModeAndError( samples[:,0])
@@ -91,24 +100,22 @@ def getPredictedConstraints(nIterations = 2,nSampleSizes = 3, massCut=0.):
 
     
 def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
-                    hubbleInterpolaterClass, massCut=0.):
+                    hubbleInterpolaterClass):
     samples = None
-
-    if massCut > 0:
-        pklFile = 'picklesMassCut/multiFitSamples_%i_%0.2f.pkl' \
-          % (iSampleSize, massCut)
-    else:
-        pklFile = 'exactPDFpickles/multiFitSamples_%i.pkl' \
-          % iSampleSize
     
+
+    pklFile = 'picklesDualMass/multiFitSamples_dualMass_%i.pkl' \
+          % (iSampleSize)
+        
 
     if os.path.isfile(pklFile):
         return pkl.load(open(pklFile, 'rb'))
     
+    logProb = np.array([])
     for iIteration in range(nIterations):
         print("Iteration: %i/%i" % (iIteration+1, nIterations))
         selectedTimeDelays = \
-              selectRandomSampleOfTimeDelays( iSampleSize, massCut=massCut)
+              selectRandomSampleOfTimeDelays( iSampleSize)
       
         fitHubbleClass = \
               fitHubble.fitHubbleParameterClass( selectedTimeDelays, \
@@ -123,37 +130,46 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
             samples = np.vstack( (samples, fitHubbleClass.samples))
 
 
-
+        pdb.set_trace()
     pkl.dump(samples, open(pklFile, 'wb'))
         
     return samples
 
 
-def selectRandomSampleOfTimeDelays( nSamples, massCut=0.):
+def selectRandomSampleOfTimeDelays( nSamples):
     '''
     From a given pdf randomly select some time delays
 
     '''
-    #Real world inerpolator so it neeeds a mass cut of >massCut
-    #arbitatiry large upper bound to make sure all are included (i.e 13)
+    #Real world inerpolator
     realWorldInterpolator = \
       hubbleModel.hubbleInterpolator( )
     
-    realWorldInterpolator.getTrainingData('pickles/trainingDataWithMass.pkl')
+    realWorldInterpolator.getTrainingData('pickles/trainingDataForObsWithMass.pkl')
 
     realWorldInterpolator.getTimeDelayModel()
 
-    
-    interpolateToTheseTimes= np.linspace(-3, 3, 1e6)
 
-    theta = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., \
-    'OmegaL':0.7, 'zLens':0.56, 'densityProfile':-1.75, 'totalMass':11.3}
-    interpolatedCumSum = \
-          realWorldInterpolator.predictCDF( interpolateToTheseTimes, \
-                                                  theta )
-    interpolatedProb = undoCumSum( interpolatedCumSum)
+    interpolateToTheseTimes= np.linspace(-3, 3, 1e6)
       
-      
+    inputParams = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., 'OmegaL':0.7, \
+        'zLens':0.4, 'densityProfile':-1.75, 'totalMass':11.1}
+        
+    interpolatedCumSumA = \
+          realWorldInterpolator.predictCDF( interpolateToTheseTimes, inputParams )
+          
+    interpolatedProbA = undoCumSum( interpolatedCumSumA)
+
+    inputParams = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., 'OmegaL':0.7, \
+        'zLens':0.4, 'densityProfile':-1.75, 'totalMass':11.25}
+        
+    interpolatedCumSumB = \
+          realWorldInterpolator.predictCDF( interpolateToTheseTimes, inputParams )
+          
+    interpolatedProbB = undoCumSum( interpolatedCumSumB)
+
+    interpolatedProb = interpolatedProbA + interpolatedProbB
+    
     interpolatedProb[interpolatedProb<0] = 0
     interpolatedProb /= np.sum(interpolatedProb)
 
@@ -164,7 +180,7 @@ def selectRandomSampleOfTimeDelays( nSamples, massCut=0.):
       np.random.choice(interpolateToTheseTimes, \
                     p=interpolatedProb, size=np.int(nSamples))
 
-        
+    
     bins = np.linspace(-1,4,1000)
     y, x = np.histogram(logTimeDelays, \
                     bins=bins, density=True)
@@ -178,16 +194,7 @@ def selectRandomSampleOfTimeDelays( nSamples, massCut=0.):
     cumsumYError = np.sqrt(np.cumsum(error**2)/(np.arange(len(error))+1))
 
     xcentres += dX/2.
-    hubbleInterpolaterClass = hubbleModel.hubbleInterpolator( massCut=[0., massCut] )
-    
-    hubbleInterpolaterClass.getTrainingData('pickles/trainingDataMassCutLower_%0.2f.pkl' % massCut )
 
-    hubbleInterpolaterClass.getTimeDelayModel()
-
-    pred = hubbleInterpolaterClass.predictCDF(interpolateToTheseTimes, theta)
-    plt.plot(interpolateToTheseTimes, pred, 'b')
-    plt.plot(interpolateToTheseTimes, interpolatedCumSum, 'r')
-    plt.show()
     return {'x':xcentres, 'y':cumsumY,  'error':cumsumYError}
 
 def getModeAndError( samples ):
@@ -229,7 +236,7 @@ def getModeAndError( samples ):
     
     errorOnError = np.std(np.array(indivError)) /np.sqrt(len(indivError))
     
-    pdb.set_trace()
+
     return np.mean(maxLike), np.median(indivError)
 
 def undoCumSum(cumulative):
@@ -247,5 +254,5 @@ def reportParameters( samples ):
 
 
 if __name__ == '__main__':
-    sensivitiyToDifferentHalo()
+    nonPerfectFittingFunction()
 ##

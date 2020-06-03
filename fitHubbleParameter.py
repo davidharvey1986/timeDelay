@@ -22,20 +22,17 @@ from matplotlib import pyplot as plt
 
 def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
 
-
-    #maxProbCum =  np.cumsum(hubbleInterpolator.predictPDF( xTrue, np.array([0.7,0.3,-1.9]) ))
-    #maxProbCum /= np.max(maxProbCum)
-
-    
-    #maxProb = 1./np.sum((maxProbCum - yTrue)**2)
     thetaDict = \
-      {'H0':theta[0], 'zLens':theta[1], 'densityProfile':theta[2], 'totalMass':theta[3], \
-        'OmegaM':0.3, 'OmegaL':0.7, 'OmegaK':0}
+      {'H0':theta[0], \
+       'zLens':theta[1], \
+       'densityProfile':theta[2], \
+        'totalMass':theta[3], \
+        'OmegaM':theta[4], \
+        'OmegaL':theta[5], \
+         'OmegaK':0.}
 
     cumsumYtheory = \
       hubbleInterpolator.predictCDF( xTrue, thetaDict )
-
-      
    
     
     prior = priorOnParameters( thetaDict, hubbleInterpolator )
@@ -51,39 +48,40 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     
 def priorOnParameters( thetaDict, hubbleInterpolator ):
 
-  
-   
+      
     for iThetaKey in hubbleInterpolator.features.dtype.names:
-        if iThetaKey == 'totalMass':
-            if (thetaDict['totalMass'] < 11) |\
-              (thetaDict['totalMass'] > 13):
-              return -np.inf
-        else:
-            if (thetaDict[iThetaKey] < \
-                    np.min(hubbleInterpolator.features[iThetaKey])) | \
-                (thetaDict[iThetaKey] > \
+        
+        if (thetaDict[iThetaKey] < \
+           np.min(hubbleInterpolator.features[iThetaKey])) | \
+           (thetaDict[iThetaKey] > \
                     np.max(hubbleInterpolator.features[iThetaKey])):
 
-                return -np.inf
+            return -np.inf
 
 
     for iCosmoKey in hubbleInterpolator.cosmologyFeatures.dtype.names:
-        if iCosmoKey == 'H0':
-            continue
+        #if iCosmoKey == 'H0':
+        #    continue
+
+        priorRange = \
+          np.max(hubbleInterpolator.cosmologyFeatures[iCosmoKey]) - \
+          np.min(hubbleInterpolator.cosmologyFeatures[iCosmoKey])
+
+        priorMidPoint = \
+          (np.max(hubbleInterpolator.cosmologyFeatures[iCosmoKey]) + \
+          np.min(hubbleInterpolator.cosmologyFeatures[iCosmoKey]))/2.
+
+          
        
-        if (thetaDict[iCosmoKey] < \
-                np.min(hubbleInterpolator.cosmologyFeatures[iCosmoKey])) | \
-          (thetaDict[iCosmoKey] > \
-               np.max(hubbleInterpolator.cosmologyFeatures[iCosmoKey])):
+        if (thetaDict[iCosmoKey] < priorMidPoint-priorRange/2.) | \
+          (thetaDict[iCosmoKey] > priorMidPoint+priorRange/2.):
             return -np.inf
     
     if (thetaDict['H0'] < 0.6) | (thetaDict['H0'] > 0.8):
         
         return -np.inf
-    #if (thetaDict['variance'] < 0) | (thetaDict['variance'] > 0.5):
-    #    return -np.inf
 
-    variancePrior = norm.pdf(thetaDict['zLens'], loc=0.55, scale=0.4)
+    zLensPrior = norm.pdf(thetaDict['zLens'], loc=0.55, scale=0.4)
  
     return 1
 class fitHubbleParameterClass:
@@ -109,7 +107,7 @@ class fitHubbleParameterClass:
   
         nwalkers = 20
 
-        ndim = self.hubbleInterpolator.nFreeParameters  - 3
+        ndim = self.hubbleInterpolator.nFreeParameters - 1
 
         burn_len=100
         chain_len=1000
@@ -117,9 +115,9 @@ class fitHubbleParameterClass:
         pos0[:,0] = np.random.uniform( 0.6, 0.8, nwalkers) 
         pos0[:,1] =  np.random.uniform( 0.2, 0.74, nwalkers)
         pos0[:,2] =  np.random.uniform( -1.6,-2., nwalkers)
-        pos0[:,3] =  np.random.uniform( 11, 13., nwalkers)
-        #pos0[:,4] =  np.random.uniform( 0.25, 0.35, nwalkers)
-        #pos0[:,5] =  np.random.uniform( 0.65, 0.75, nwalkers)
+        pos0[:,3] =  np.random.uniform( 10.9, 11.3, nwalkers)
+        pos0[:,4] =  np.random.uniform( 0.25, 0.35, nwalkers)
+        pos0[:,5] =  np.random.uniform( 0.65, 0.75, nwalkers)
         #pos0[:,6] =  np.random.uniform( -0.02, 0.02, nwalkers)
         
 

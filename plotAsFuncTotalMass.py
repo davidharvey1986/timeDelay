@@ -1,16 +1,19 @@
 
 from plotAsFunctionOfDensityProfile import *
+import matplotlib
+font = { 'size'   : 15}
 
+matplotlib.rc('font', **font)
 def main( ):
     '''
     Loop through each halo and get the density profile 
     and then plot the distribution as a function of the powerlaw index
     of the density profile
     '''
+    fig = plt.figure(figsize=(7,7))
 
     
     allFiles = glob.glob('../output/CDM/z_0.*/B*cluster_0_*_total*.json')
-    rGrid = getRadGrid()
     
     #For aesthetics                                                                                         
     jet = cm = plt.get_cmap('Reds')
@@ -26,23 +29,39 @@ def main( ):
     totalMass = []
     nHalos = []
     RMS = []
-    for iHalo in allFiles:
-        pdf = combineJsonFiles([iHalo])
+    allDistributionsPklFile = \
+              "../output/CDM/selectionFunction/"+\
+              "sparselyPopulatedParamSpace.pkl"
+
+    allDistributions = \
+      pkl.load(open(allDistributionsPklFile,'rb'))
+    fiducialCosmology = \
+          {'H0':70., 'OmegaM':0.3, 'OmegaL':0.7, 'OmegaK':0.}
+    cosmoKeys = fiducialCosmology.keys()
+    for iHalo in allDistributions:
+        doNotTrainThisSample =  \
+              np.any(np.array([fiducialCosmology[iCosmoKey] != \
+              iHalo['cosmology'][iCosmoKey] \
+              for iCosmoKey in cosmoKeys]))
+
+        if doNotTrainThisSample:
+            continue
+
  
  
- 
-        nHalosInField = substructure( iHalo ) 
+        nHalosInField = substructure( iHalo['fileNames'][0] ) 
         nHalos.append(nHalosInField)
      
-        totalMassForHalo = getTotalMass( iHalo, rGrid=rGrid)
+        totalMassForHalo = getTotalMass( iHalo['fileNames'][0])
 
         totalMass.append(totalMassForHalo)
 
         #####FIT POWER LAW TO THE DISTRIBUTION##############
         
  
+        inputPDF = {'y':iHalo['y'], 'x':iHalo['x'], 'yError':iHalo['yError'],}
 
-        powerLawFitClass = powerLawFit( pdf, yMin=1.5e-2, curveFit=True, inputYvalue='y' )
+        powerLawFitClass = powerLawFit( inputPDF, yMin=1.5e-2, curveFit=True, inputYvalue='y' )
         
         #beta.append(powerLawFitClass.params['params'][1])
         #betaError.append( powerLawFitClass.params['error'][1])
@@ -82,14 +101,14 @@ def main( ):
     ax = plt.gca()
     nHalos = np.array(nHalos)
     
-    ax.errorbar(totalMass[nHalos == 1], tPeak[nHalos == 1], \
-                yerr=tPeakError[nHalos == 1], fmt='o', \
-                          color='blue', alpha=alpha, label='No Substructure')
-                          
+    ax.errorbar(totalMass, tPeak, \
+                yerr=tPeakError, fmt='o', \
+                          color='blue', alpha=alpha)
+    '''
     ax.errorbar(totalMass[nHalos > 1], tPeak[nHalos > 1],\
                 yerr=tPeakError[nHalos > 1], \
             fmt='o', alpha=alpha, color='red', label='Substrucutre')
-            
+    '''
     
     #axarr[1].errorbar(powerLaw[nHalos == 1], tPeak[nHalos == 1], \
     #        xerr=powerLawError[nHalos == 1], yerr=tPeakError[nHalos == 1], fmt='o', color='red')
@@ -98,32 +117,37 @@ def main( ):
     #axarr[1].errorbar(powerLaw[nHalos > 1], tPeak[nHalos > 1], \
     #        xerr=powerLawError[nHalos > 1], yerr=tPeakError[nHalos > 1], fmt='o')
             
-    ax.legend()
     
     #axarr[0].scatter(powerLaw, beta, c=RMS)
     #axarr[1].scatter(powerLaw, tPeak, c=RMS)
-    pltX = np.linspace(11., 12.)
-    getAndPlotTrend(totalMass[nHalos == 1], tPeak[nHalos == 1], ax, '-', color='blue', \
-                        pltX=pltX, sigma=tPeakError[nHalos == 1])
-    getAndPlotTrend(totalMass[nHalos > 1], tPeak[nHalos > 1], ax, '-', color='red', \
-                        pltX=pltX, sigma=tPeakError[nHalos > 1])
+    pltX = np.linspace(10.8, 11.4)
+
+    
+    ax.plot( pltX, 2*(pltX-11) + 1.6, 'k--', label=r'$\Delta t (most prob) \propto M(<5kpc)^2$')
+
+    getAndPlotTrend(totalMass, tPeak, ax, '-', color='blue', \
+                        pltX=pltX, sigma=tPeakError)
+    #getAndPlotTrend(totalMass[nHalos > 1], tPeak[nHalos > 1], ax, '-', color='red', \
+    #                    pltX=pltX, sigma=tPeakError[nHalos > 1])
 
     #popt, pcov = curve_fit(func, powerLaw[nHalos == 1], beta[nHalos == 1])
     #ax.plot( powerLaw, func( powerLaw, *popt), color='blue')
     #popt, pcov = curve_fit(func, powerLaw[nHalos > 1], beta[nHalos > 1])
     #ax.plot( powerLaw, func( powerLaw, *popt), color='red')
-    
+    ax.legend()
+
     #popt, pcov = curve_fit(func, powerLaw, tPeak)
     #axarr[1].plot( powerLaw, func( powerLaw, *popt))
-    ax.set_xlabel('Total Mass')
-    ax.set_ylabel('Most Probable Time Delay')
+    ax.set_xlabel('log($M(<5kpc)/M_\odot$)')
+    ax.set_ylabel('$\log(\Delta t$ [most prob] )')
+    ax.set_xlim(pltX[0],pltX[-1])
     plt.savefig('../plots/totalMass.pdf')
     plt.show()
     
 def func(x, a, b):
     return a  + x*b
 
-def getTotalMass( jsonFileName, rGrid, radialCut=50.):
+def getTotalMass( jsonFileName, rGrid=None, radialCut=50.):
     if os.path.isfile( 'pickles/totalMasses.pkl'):
         jsonFiles, masses = \
           pkl.load(open('pickles/totalMasses.pkl','rb'))
@@ -152,7 +176,7 @@ def saveAllTotalMass(load=True):
     #So i dont have to recall the functiuon which takes a while
     #in the hubble interpolator
     
-    allJsonFiles = glob.glob('/Users/DavidHarvey/Documents/Work/TimeDelay/output/CDM/z*/*.json')
+    allJsonFiles = glob.glob('/Users/DavidHarvey/Documents/Work/TimeDelay/output/CDM/z*/B**cluster_0_*_total_*.json')
 
     totalMass = np.zeros(len(allJsonFiles))
     rGrid = getRadGrid()

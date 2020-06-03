@@ -1,10 +1,14 @@
 
 from plotAsFunctionOfDensityProfile import *
+import matplotlib
+font = { 'size'   : 15}
+
+matplotlib.rc('font', **font)
 
 def medianTimeFunctionSubstructure():
     
 
-    plt.figure(figsize=(8,6))
+    plt.figure(figsize=(7,7))
     #For aesthetics                                                                                         
     jet = cm = plt.get_cmap('Reds')
     cNorm  = colors.Normalize(vmin=2.8, vmax=3.)
@@ -61,19 +65,34 @@ def getHaloStats(pklFile):
     medTime = []
     maxTime = []
     nHalos = []
-    allFiles = glob.glob('../output/CDM/z_0.*/B*cluster_0_*_total*.json')
-    for iHalo in allFiles:
- 
-        pdf = selectFunct.selectionFunction( [iHalo], newHubbleParameter=70., useLsst=True )
-                           
-        nHalosInField =substructure( iHalo ) 
+
+    allDistributionsPklFile = \
+              "../output/CDM/selectionFunction/"+\
+              "sparselyPopulatedParamSpace.pkl"
+
+    allDistributions = \
+      pkl.load(open(allDistributionsPklFile,'rb'))
+    fiducialCosmology = \
+          {'H0':70., 'OmegaM':0.3, 'OmegaL':0.7, 'OmegaK':0.}
+    cosmoKeys = fiducialCosmology.keys()
+    for iHalo in allDistributions:
+        doNotTrainThisSample =  \
+              np.any(np.array([fiducialCosmology[iCosmoKey] != \
+              iHalo['cosmology'][iCosmoKey] \
+              for iCosmoKey in cosmoKeys]))
+
+        if doNotTrainThisSample:
+            continue
+
+            
+        nHalosInField = substructure( iHalo['fileNames'][0] ) 
         nHalos.append(nHalosInField)
-        medTime.append( pdf['x'][np.argmin(np.abs(np.cumsum(pdf['y'])/np.sum(pdf['y'])-0.5))])
-        maxTime.append( pdf['x'][np.argmax(pdf['y'])])
+        medTime.append( iHalo['x'][np.argmin(np.abs(np.cumsum(iHalo['y'])/np.sum(iHalo['y'])-0.5))])
+        maxTime.append( iHalo['x'][np.argmax(iHalo['y'])])
                             
         #####FIT POWER LAW TO THE DISTRIBUTION##############
-        
-        powerLawFitClass = powerLawFit( pdf, yMin=1.e-2, \
+        inputPDF = {'y':iHalo['y'], 'x':iHalo['x'], 'yError':iHalo['yError'],}
+        powerLawFitClass = powerLawFit( inputPDF, yMin=1.e-2, \
                         curveFit=True, inputYvalue='y' )
         
 

@@ -13,57 +13,113 @@ from scipy.interpolate import CubicSpline
 from copy import deepcopy as cp
 import plotAsFunctionOfDensityProfile as getDensity
 from matplotlib import gridspec 
-
+import plotAsFuncTotalMass as getMass 
 
 def main():
+    fig = plt.figure( figsize=(10,6) )
+    gs = gridspec.GridSpec( 6, 1)
+    axAa = plt.subplot( gs[:3,0])
+    axAb = plt.subplot( gs[3:,0])
+    
+   # axBa = plt.subplot( gs[:3,1])
+   # axBb = plt.subplot( gs[3:,1])
+    
+    fig.subplots_adjust(hspace=0) 
+
+    principalComponentList = np.linspace(3, 9, 7)
+    nSamples = 10000
+    for iPrincipalComponent in principalComponentList:
+        pklFile = 'pickles/hubbleInterpolatorTest_%i.pkl' % iPrincipalComponent
+        
+        if os.path.isfile( pklFile):
+            diffArrays = pkl.load(open(pklFile, 'rb'))
+        else:
+            diffArrays = getDiffArraysForNumPrincpalComponents( np.int(iPrincipalComponent), nSamples=nSamples )
+            pkl.dump(diffArrays, open(pklFile, 'wb'))
+  
+        #if iPrincipalComponent==9:
+         #   for i in np.arange(nSamples):
+          #      #axAa.plot( diffArrays['x'], diffArrays['diffPCA'][i,:], color='grey', alpha=0.5)
+           #     axAa.plot( diffArrays['x'], diffArrays['diffPredict'][i,:], color='grey', alpha=0.1)
+
+        #axAb.plot(diffArrays['x'], np.sqrt(np.mean(diffArrays['diffPCA']**2, axis=0)), label='%i' % iPrincipalComponent)
+        axAa.plot(diffArrays['x'], np.mean(diffArrays['diffPredict'], axis=0)*100, label='%i' % iPrincipalComponent)
+        variance =  np.sqrt(np.mean(diffArrays['diffPredict']**2, axis=0))
+        axAb.plot(diffArrays['x'], variance)
+        
+    axAa.legend(ncol=3, prop={'size': 10}, title='# Princpal Comp', fontsize=6)
+    
+    axAb.set_xlabel(r'$log(\Delta t$ /days)')
+    #axBb.set_xlabel(r'$log(\Delta t$ /days)')
+    
+    axAa.set_ylabel(r'$\langle \bar{CDF} - CDF_{T}\rangle$ $/10^2$')
+    axAb.set_ylabel(r'$\sqrt{\langle (\bar{CDF} - CDF_{T})^2\rangle}$')
+    #axBa.set_ylabel(r'$CDF_{\tilde{T}} - CDF_{T}$')
+
+    axAa.set_xlim(-1,3)
+    axAb.set_xlim(-1,3)
+    #axBa.set_xlim(-1,3)
+    #axBb.set_xlim(-1,3)
+    print('Maximum statistical limit is %0.3f' % np.max(variance)) 
+    axAa.set_xticklabels([])
+    #axBa.set_xticklabels([])
+    fig.align_ylabels()
+    plt.savefig('../plots/gprWithInterpolator.pdf')
+    plt.show()
+
+
+    
+def getDiffArraysForNumPrincpalComponents( nComponents, nSamples=100 ):
 
     '''
     New method, test the GPR for the default cosmology
     and then lineraly interpolate this to a new cosmology
     '''
 
-    gs = gridspec.GridSpec( 5, 1)
-    axA = plt.subplot( gs[:3,0])
-    axB = plt.subplot( gs[3:,0])
-
-    #the first ensemble to test which is looking at H0 and OmegaM
-
     #hubble interpolator over a small number o
     hubbleInterpolator = \
-      hubbleModel.hubbleInterpolator( )
+      hubbleModel.hubbleInterpolator( nPrincipalComponents=nComponents )
       
-    hubbleInterpolator.getTrainingData('exactPDFpickles/noCosmologyWithMass.pkl')
+    hubbleInterpolator.getTrainingData('exactPDFpickles/trainingDataWithMass.pkl')
 
-    hubbleInterpolator.getTimeDelayModel(modelFile='pickles/noCosmologyWithMass.pkl')
+    hubbleInterpolator.getTimeDelayModel()
     
 
     allDistributions = \
       pkl.load(open(hubbleInterpolator.allDistributionsPklFile,'rb'))
 
-    #Check the interpolator for this number of samples
-    nSamples = 1000
 
     #set up an array
+    #This one is truth - predictedCDF
     diffArray = np.zeros((nSamples, len(hubbleInterpolator.timeDelays)))
     
+    #this one is truth - true pca with shifted cosmology
+    diffPCA= np.zeros((nSamples, len(hubbleInterpolator.timeDelays)))
+
+    #Cosmology labels
     cosmoKeys = hubbleInterpolator.fiducialCosmology.keys()
+    
     doneInts = []
     for i in np.arange(nSamples):
+        
+        #Cant do all of them so randomly select one
         randInt = np.random.randint(0, len(allDistributions))
 
+        #Makes sure i dont re-do one
         if randInt in doneInts:
             continue
         doneInts.append(randInt)
-        
+
+        #Get the raw distriubtion
         iDist = allDistributions[randInt]
 
-        print("%i/%i" % (i, nSamples))
-
+        #and determine the cdf
         truth = iDist['y'][ iDist['x'] > \
-                    hubbleInterpolator.logMinimumTimeDelay]
-                    
+                hubbleInterpolator.logMinimumTimeDelay]
+                
         truthCumSum = np.cumsum(truth)/np.sum(truth)
-        
+
+        #Get the params of this distribution
         params = iDist['cosmology']
       
         fileName = iDist['fileNames'][0]
@@ -71,52 +127,49 @@ def main():
         zLens = np.float(zLensStr.split('_')[1])
         densityProfile = \
           getDensity.getDensityProfileIndex(fileName)[0]
-  
+
+        totalMassForHalo = getMass.getTotalMass( fileName )
+
         defaultDistributionIndex = \
               ( hubbleInterpolator.features['densityProfile'] == densityProfile ) &\
-              ( hubbleInterpolator.features['zLens'] == zLens )
+              ( hubbleInterpolator.features['zLens'] == zLens ) & \
+              ( hubbleInterpolator.features['totalMass'] == totalMassForHalo )
+              
 
-        truthCDF = hubbleInterpolator.pdfArray[defaultDistributionIndex,:][0]
-        
-    
         params['zLens'] = zLens
         params['densityProfile'] = densityProfile
+        params['totalMass'] = totalMassForHalo
         params['H0'] /= 100.
+        
+        #and get the principal components that describe this
+        truePrincpalComponents = \
+          hubbleInterpolator.principalComponents[defaultDistributionIndex,:]
 
+        #and then the distriubtion described by the PCA in the default cosmology
+        pcaCDFinDefaultCosmology =  hubbleInterpolator.pca.inverse_transform( truePrincpalComponents[0] )
         
-        
-        trueComponents = hubbleInterpolator.principalComponents[defaultDistributionIndex,:]
-
-        pcaCDF =   hubbleInterpolator.pca.inverse_transform( trueComponents[0] )
-
-        
-        
-        
+        #Get the cosmological interpolated shift and shift it               
         interpolateThisCosmology = \
           np.array([ iDist['cosmology'][i] for i in \
                          hubbleInterpolator.fiducialCosmology.keys()])
                          
         cosmoShift = \
           hubbleInterpolator.interpolatorFunction.predict(interpolateThisCosmology.reshape(1,-1))
-       
-        spline =    CubicSpline( hubbleInterpolator.timeDelays+cosmoShift, pcaCDF)
+
+          
+        spline = CubicSpline( hubbleInterpolator.timeDelays+cosmoShift, pcaCDFinDefaultCosmology)
         
-        shiftPCACDF = spline( hubbleInterpolator.timeDelays)
+        #So this is the PDF of the true components, interpolated to the new cosmology
+        pcaPDFinShiftedCosmology = spline( hubbleInterpolator.timeDelays)
         
+
+        diffPCA[i,:] = pcaPDFinShiftedCosmology - truthCumSum
+    
+        #This is the predicted CDF from GPR interpolated to the new cosmology
         predictCDF = hubbleInterpolator.predictCDF( hubbleInterpolator.timeDelays, params)
+        diffArray[i,:] =  predictCDF - truthCumSum
 
-        diff = truthCumSum - predictCDF
-
-
-        diffArray[i,:] = diff
-        
-        axA.plot( hubbleInterpolator.timeDelays, truthCumSum - predictCDF, color='grey')
-        #if np.max(np.abs(diff)) > 0.1:
-         #   pdb.set_trace()
-
-    axB.plot(hubbleInterpolator.timeDelays, np.mean(diffArray, axis=0))
-    plt.show()
-    pdb.set_trace()
+    return {'x':  hubbleInterpolator.timeDelays, 'diffPredict': diffArray, 'diffPCA':diffPCA}
 
 def getBestParsForGPR():
   
@@ -196,5 +249,5 @@ def plotAllDefaultCosmologies():
                 
     
 if __name__ == '__main__':
-    #main()
-    plotAllDefaultCosmologies()
+    main()
+    #plotAllDefaultCosmologies()

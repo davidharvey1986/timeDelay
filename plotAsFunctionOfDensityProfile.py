@@ -6,16 +6,21 @@ import matplotlib.cm as cmx
 from matplotlib import rc
 from powerLawFit import *
 import generateDifferentSelectionFunctions as selectFunct
+import matplotlib
+font = { 'size'   : 15}
+
+matplotlib.rc('font', **font)
+
 def main( ):
     '''
     Loop through each halo and get the density profile 
     and then plot the distribution as a function of the powerlaw index
     of the density profile
     '''
+    fig = plt.figure(figsize=(7,7))
 
     
     allFiles = glob.glob('../output/CDM/z_0.*/B*cluster_0_*_total*.json')
-    rGrid = getRadGrid()
     
     #For aesthetics                                                                                         
     jet = cm = plt.get_cmap('Reds')
@@ -33,23 +38,38 @@ def main( ):
     nHalos = []
     RMS = []
     zLens = []
-    for iHalo in allFiles:
-        #pdf = combineJsonFiles([iHalo], newHubbleParameter=70.)
- 
-        pdf = selectFunct.selectionFunction( [iHalo], newHubbleParameter=70., useLsst=True )
+    allDistributionsPklFile = \
+              "../output/CDM/selectionFunction/"+\
+              "sparselyPopulatedParamSpace.pkl"
+
+    allDistributions = \
+      pkl.load(open(allDistributionsPklFile,'rb'))
+    fiducialCosmology = \
+          {'H0':70., 'OmegaM':0.3, 'OmegaL':0.7, 'OmegaK':0.}
+    cosmoKeys = fiducialCosmology.keys()
+    for iHalo in allDistributions:
+        doNotTrainThisSample =  \
+              np.any(np.array([fiducialCosmology[iCosmoKey] != \
+              iHalo['cosmology'][iCosmoKey] \
+              for iCosmoKey in cosmoKeys]))
+
+        if doNotTrainThisSample:
+            continue
+
                            
-        zLens.append( np.float(iHalo.split('/')[3].split('_')[1]))
-        nHalosInField =substructure( iHalo ) 
+        zLens.append( np.float(iHalo['fileNames'][0].split('/')[-2].split('_')[1]))
+        nHalosInField =substructure( iHalo['fileNames'][0] ) 
         nHalos.append(nHalosInField)
      
         densityProfileIndex, densityProfileIndexError = \
-          getDensityProfileIndex( iHalo, rGrid=rGrid)
+          getDensityProfileIndex( iHalo['fileNames'][0])
         powerLaw.append(densityProfileIndex)
         powerLawError.append(densityProfileIndexError)
+        inputPDF = {'y':iHalo['y'], 'x':iHalo['x'], 'yError':iHalo['yError'],}
 
         #####FIT POWER LAW TO THE DISTRIBUTION##############
         
-        powerLawFitClass = powerLawFit( pdf, yMin=1.e-2, \
+        powerLawFitClass = powerLawFit( inputPDF, yMin=1.e-2, \
                         curveFit=True, inputYvalue='y' )
         
         beta.append(powerLawFitClass.params['params'][1])
@@ -253,6 +273,6 @@ def getAndPlotTrend( x, y, axis, fmt, color='grey', pltX=None, sigma=None):
     
 
 if __name__ == '__main__':
-    saveAllDensityProfileIndexes()
-    #main()
+    #saveAllDensityProfileIndexes()
+    main()
 

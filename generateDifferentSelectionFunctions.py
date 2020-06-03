@@ -20,6 +20,7 @@ def selectionFunctionEnsembleHalos():
     #hubbleParameter = 70.
     hubbleParameters = [70.]
     halos = ['B002','B005','B008','B009']
+    
     for halo in halos:
         allFiles = glob.glob(dirD+'/CDM/z*/%s_cluster_0_*.json' % halo )
 
@@ -28,12 +29,9 @@ def selectionFunctionEnsembleHalos():
   
             
             pklFileName = \
-              '../output/CDM/selectionFunction/SF_%s_%i_lsst.pkl' \
-              % (halo,hubbleParameter )
+              '../output/CDM/selectionFunction/SF_%s_lsst.pkl' % (halo)
             finalMergedPDFdict = \
-              selectionFunction(allFiles, \
-                                newHubbleParameter=hubbleParameter,\
-                                useLsst = True)
+              selectionFunction(allFiles, useLsst = True)
                                 
             pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
   
@@ -251,4 +249,5 @@ if __name__ == "__main__":
     #selectionFunctionIndividualLenses()
     #selectionFunctionIndividualLensesForData()
     #selectionFunctionIndividualLensesForData()
-    selectFunctionForAllLenses()
+    #selectFunctionForAllLenses()
+    selectionFunctionEnsembleHalos()

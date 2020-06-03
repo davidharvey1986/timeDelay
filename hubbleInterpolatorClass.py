@@ -27,9 +27,9 @@ class hubbleInterpolator:
     planes
     '''
 
-    def __init__( self, nPrincipalComponents=9, minimumTimeDelay=0.001,\
+    def __init__( self, nPrincipalComponents=6, minimumTimeDelay=0.001,\
                       allDistributionsPklFile=None, massCut=[0., 16], \
-                      regressorNoiseLevel=1e-10):
+                      regressorNoiseLevel=1e-3):
         '''
         inputTrainFeatures: a list of the cosmology keys to train over
         minimmumTimeDelay: should we expect a minimum possibly observed time delay 
@@ -87,9 +87,6 @@ class hubbleInterpolator:
 
         cosmoKeys =  allDistributions[0]['cosmology'].keys()
         
-        
-        rGrid = getMass.getRadGrid()
-        
         featureDtype = \
           [( ('zLens',float) ), ('densityProfile', float), ('totalMass', float) ]
 
@@ -110,14 +107,13 @@ class hubbleInterpolator:
 
             fileName = finalMergedPDFdict['fileNames'][0]
             
-            totalMassForHalo = \
-              getMass.getTotalMass( fileName, rGrid=rGrid)
+            totalMassForHalo = getMass.getTotalMass( fileName)
 
             if (totalMassForHalo < self.massCut[0]) |\
                (totalMassForHalo > self.massCut[1]):
                continue
 
-            print(totalMassForHalo)
+
               
             zLensStr = fileName.split('/')[-2]
             zLens = np.float(zLensStr.split('_')[1])
@@ -243,22 +239,24 @@ class hubbleInterpolator:
               getDensity.getDensityProfileIndex(fileName)[0]
 
             totalMassForHalo = \
-              getMass.getTotalMass( fileName, rGrid=rGrid)
+              getMass.getTotalMass( fileName  )
 
             defaultDistributionIndex = \
               ( self.features['densityProfile'] == densityProfile ) &\
               ( self.features['zLens'] == zLens ) &\
-              ( self.features['totalMass'] == totalMass)
+              ( self.features['totalMass'] == totalMassForHalo)
 
-            defaulfDistributionPDF = \
-              self.pdfArray[ defaultDistributionIndex,:][0]
             defaulfDistribution = \
-              np.cumsum(defaulfDistributionPDF)/np.sum(defaulfDistributionPDF)
+              self.pdfArray[ defaultDistributionIndex,:][0]
+              
+            #defaulfDistribution = \
+            #  np.cumsum(defaulfDistributionPDF)/np.sum(defaulfDistributionPDF)
               
             newCosmoDist = iDistribution['y'][ iDistribution['x'] > \
                                        self.logMinimumTimeDelay]
             
             newCosmoDistCumSum = np.cumsum(newCosmoDist)/np.sum(newCosmoDist)
+            
             distributionShift = \
               np.interp( 0.5, newCosmoDistCumSum, self.timeDelays) - \
               np.interp( 0.5, defaulfDistribution, self.timeDelays)
@@ -280,7 +278,7 @@ class hubbleInterpolator:
             self.cosmologyFeatures = \
               np.append( self.cosmologyFeatures, np.array(tuple(iPoint),dtype = featureDtype))
 
-        
+        pdb.set_trace()
         self.interpolatorFunction = LinearRegression()
         self.interpolatorFunction.fit(points, values)
         
@@ -364,9 +362,9 @@ class hubbleInterpolator:
         #  np.cumsum(  predictedTransformPDF)/np.sum(predictedTransformPDF)
           
 
-        cal = 0
+
         predictedCosmoShift = \
-          self.interpolatorFunction.predict(interpolateThisCosmology.reshape(1,-1)) + cal
+          self.interpolatorFunction.predict(interpolateThisCosmology.reshape(1,-1)) 
           
 
         #Just interpolate the x range for plotting

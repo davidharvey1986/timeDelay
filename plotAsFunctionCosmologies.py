@@ -7,6 +7,9 @@ import matplotlib.cm as cmx
 from matplotlib import rc
 from matplotlib import pyplot as plt
 import ipdb as pdb
+from matplotlib import rcParams
+rcParams["font.size"] = 16
+
 def main():
     
     hubbleParameters = np.linspace(60,80,11)
@@ -77,12 +80,7 @@ def main():
             label = r"%s: %0.2f" % (labels[iCosmoPar],iParInCosmoList)
             plotPDF( finalMergedPDFdict, scalarMap.to_rgba(jColorInMap), \
                 label, axisA, yType='y', nofill=False )
-            
-            axisA.text(0.03, 0.5, \
-                r'P(>log[$\Delta t$]) - P(>log[$\Delta t$])$_{\rm \Lambda CDM}$', \
-                va='center',\
-                           transform=fig.transFigure,\
-                           rotation=90)
+
 
             axisA.set_xlim(0.5,3)
            
@@ -101,8 +99,11 @@ def main():
     #axisA.set_yscale('log')
     axisA.set_xlabel(r'log($\Delta t$/ days)', labelpad=-1)
     
-
-
+            
+    axisA.text(0.03, 0.5, \
+                r'P(>log[$\Delta t$]) - P(>log[$\Delta t$])$_{\rm \Lambda CDM}$', \
+                va='center',transform=fig.transFigure, rotation=90)
+    plt.savefig('../plots/cosmoDependence.pdf')
     plt.show()
     
 if __name__ == '__main__':
