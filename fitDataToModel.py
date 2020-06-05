@@ -59,20 +59,21 @@ def monteCarlo( nMonteCarlo=100 ):
     figcorner.savefig('../plots/LCDMresults.pdf')
     plt.show()
         
-def main(pklFile='fitDataToModel_withMass_LCDMk_noZ0.6.pkl', \
-             monteCarlo=False):
+def main(pklFile='fitDataToModel_LCDMk.pkl', \
+             monteCarlo=False, dmModel='L11p2'):
     
     if not os.path.isfile( 'pickles/monteCarlosOfData/%s' % pklFile ):
         
         selectedTimeDelays = getObservations(monteCarlo=monteCarlo)
 
-        dataSelectionFunction = '../output/CDM/selectionFunction/SF_data.pkl'
+        dataSelectionFunction = \
+          '../output/%s/selectionFunction/SF_data.pkl' % dmModel
           
         hubbleInterpolaterClass = \
           hubbleInterpolator(allDistributionsPklFile=dataSelectionFunction,\
-                                 regressorNoiseLevel=1e-3)
+                                 regressorNoiseLevel=1e-3, dmModel=dmModel)
 
-        hubbleInterpolaterClass.getTrainingData('pickles/trainingDataForObsWithMass.pkl')
+        hubbleInterpolaterClass.getTrainingData('%spickles/trainingDataForObsWithMass.pkl' % dmModel)
         
         hubbleInterpolaterClass.getTimeDelayModel()
     
@@ -82,11 +83,12 @@ def main(pklFile='fitDataToModel_withMass_LCDMk_noZ0.6.pkl', \
           fitHubble.fitHubbleParameterClass( selectedTimeDelays, \
                                     hubbleInterpolaterClass)
 
-        pkl.dump(fitHubbleClass.samples,open('pickles/monteCarlosOfData/%s' % pklFile,'wb'))
+        pkl.dump(fitHubbleClass.samples,open('%spickles/monteCarlosOfData/%s' % (dmModel,pklFile),'wb'))
         samples = fitHubbleClass.samples
     else:
         
-        samples = pkl.load(open( 'pickles/monteCarlosOfData/%s' % pklFile,'rb'))
+        samples = pkl.load(open( '%spickles/monteCarlosOfData/%s' \
+                            % (dmModel, pklFile),'rb'))
 
     if monteCarlo:
         return samples
@@ -263,8 +265,8 @@ def writeResultsToTex(nMonteCarlo=100):
     resultsFile.close()
 if __name__ == '__main__':
     #writeResultsToTex()
-    #main()
-    monteCarlo()
+    main()
+    #monteCarlo()
     
     
     

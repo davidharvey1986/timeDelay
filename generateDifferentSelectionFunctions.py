@@ -11,9 +11,34 @@ import lsstSelectionFunction as lsstSelect
 from termcolor import colored
 import sys
 
+def selectionFunctionForAllDmModelsEnsemble():
+
+    #selectionFunctionIndividualLensesForData( dmModel='CDM')
+    selectionFunctionIndividualLensesForData( dmModel='L8')
+    selectionFunctionIndividualLensesForData( dmModel='L11p2')
+    
+def selectionFunctionForFiducialCosmology( dmModel='CDM'):
+    dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
+             
+    allFiles = glob.glob(dirD+'/%s/z*/B*_cluster_0_*.json' % dmModel) 
+
+    
+    listOfSelectionFunctions = []
+    pklFileName = \
+        '../output/%s/selectionFunction/SF_ensemble_fiducialCosmo.pkl' % \
+        dmModel
+  
+    finalMergedPDFdict = \
+      selectionFunction(allFiles, useLsst = 27,dmModel=dmModel)
+          
+
+        
+    pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
+
+    
 def selectionFunctionForAllDmModels():
 
-    #selectionFunctionIndividualLensesForFiducialCosmology( dmModel='CDM')
+    selectionFunctionIndividualLensesForFiducialCosmology( dmModel='CDM')
     selectionFunctionIndividualLensesForFiducialCosmology( dmModel='L8')
     selectionFunctionIndividualLensesForFiducialCosmology( dmModel='L11p2')
     
@@ -42,7 +67,7 @@ def selectionFunctionIndividualLensesForFiducialCosmology( dmModel='CDM'):
 def selectionFunctionIndividualLenses(  dmModel='CDM'):
     dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
              
-    allFiles = glob.glob(dirD+'/CDM/z*/B*_cluster_0_*.json')
+    allFiles = glob.glob(dirD+'/%s/z*/B*_cluster_0_*.json' % dmModel)
     
     nHubble = 11
     nOmegaM = 5
@@ -93,7 +118,7 @@ def selectionFunctionIndividualLensesForData( dmModel='CDM'):
     
     listOfSelectionFunctions = []
     pklFileName = \
-              '../output/CDM/selectionFunction/SF_data.pkl'
+              '../output/%s/selectionFunction/SF_data.pkl' % dmModel
     for iFile in allFiles:
         fileName = iFile.split('/')[-1]
         zLens =  iFile.split('/')[-2]
@@ -231,4 +256,5 @@ def getSourceRedshiftWeight( z, zMed=1.0 ):
 if __name__ == "__main__":
     #selectionFunctionIndividualLenses()
     #selectionFunctionIndividualLensesForData()
-    selectionFunctionForAllDmModels()
+    #selectionFunctionForAllDmModels()
+    selectionFunctionForAllDmModelsEnsemble()

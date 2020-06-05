@@ -29,7 +29,7 @@ class hubbleInterpolator:
 
     def __init__( self, nPrincipalComponents=6, minimumTimeDelay=0.001,\
                       allDistributionsPklFile=None, massCut=[0., 16], \
-                      regressorNoiseLevel=1e-3):
+                      regressorNoiseLevel=1e-3, dmModel='CDM'):
         '''
         inputTrainFeatures: a list of the cosmology keys to train over
         minimmumTimeDelay: should we expect a minimum possibly observed time delay 
@@ -48,12 +48,12 @@ class hubbleInterpolator:
           {'H0':70., 'OmegaM':0.3, 'OmegaL':0.7, 'OmegaK':0.}
         self.cosmoKeys = self.fiducialCosmology.keys()
 
-        
+        self.dmModel = dmModel
         #How to split up the trianing sample to speed it up
         if allDistributionsPklFile is None:
             self.allDistributionsPklFile = \
-              "../output/CDM/selectionFunction/"+\
-              "sparselyPopulatedParamSpace.pkl"
+              "../output/%s/selectionFunction/"+\
+              "SF_fiducialCosmo.pkl.pkl"
         else:
             self.allDistributionsPklFile =\
               allDistributionsPklFile
