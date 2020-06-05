@@ -11,31 +11,35 @@ import lsstSelectionFunction as lsstSelect
 from termcolor import colored
 import sys
 
-def selectionFunctionEnsembleHalos():
+def selectionFunctionForAllDmModels():
+
+    #selectionFunctionIndividualLensesForFiducialCosmology( dmModel='CDM')
+    selectionFunctionIndividualLensesForFiducialCosmology( dmModel='L8')
+    selectionFunctionIndividualLensesForFiducialCosmology( dmModel='L11p2')
+    
+def selectionFunctionIndividualLensesForFiducialCosmology( dmModel='CDM'):
     dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
              
-    
-    hubbleParameters = \
-      np.array([50., 60., 70., 80., 90., 100.])
-    #hubbleParameter = 70.
-    hubbleParameters = [70.]
-    halos = ['B002','B005','B008','B009']
-    
-    for halo in halos:
-        allFiles = glob.glob(dirD+'/CDM/z*/%s_cluster_0_*.json' % halo )
+    allFiles = glob.glob(dirD+'/%s/z*/B*_cluster_0_*.json' % dmModel) 
 
-        for hubbleParameter in hubbleParameters:
+    
+    listOfSelectionFunctions = []
+    pklFileName = \
+        '../output/%s/selectionFunction/SF_fiducialCosmo.pkl' % dmModel
         
+    for iFile in allFiles:
+        fileName = iFile.split('/')[-1]
+        zLens =  iFile.split('/')[-2]
   
-            
-            pklFileName = \
-              '../output/CDM/selectionFunction/SF_%s_lsst.pkl' % (halo)
-            finalMergedPDFdict = \
-              selectionFunction(allFiles, useLsst = True)
-                                
-            pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
-  
-def selectionFunctionIndividualLenses(  ):
+        finalMergedPDFdict = \
+          selectionFunction([iFile], useLsst = 27,dmModel=dmModel)
+          
+        listOfSelectionFunctions.append(finalMergedPDFdict)
+        
+    pkl.dump(listOfSelectionFunctions,open(pklFileName,'wb'), 2)
+
+    
+def selectionFunctionIndividualLenses(  dmModel='CDM'):
     dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
              
     allFiles = glob.glob(dirD+'/CDM/z*/B*_cluster_0_*.json')
@@ -50,7 +54,7 @@ def selectionFunctionIndividualLenses(  ):
     omegaL = np.linspace(0.65,0.75,nOmegaL)
     totalTimes = nHubble*nOmegaM*nOmegaK*nOmegaL*len(allFiles)
     
-    pklFileName = "../output/CDM/selectionFunction/test.pkl"
+    pklFileName = "../output/%s/selectionFunction/test.pkl" % dmModel
     listOfSelectionFunctions = []
     i = 0
     for iHubbleParameter in hubbleParameters:
@@ -81,18 +85,16 @@ def selectionFunctionIndividualLenses(  ):
 
 
        
-def selectionFunctionIndividualLensesForData( ):
+def selectionFunctionIndividualLensesForData( dmModel='CDM'):
     dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
              
-    allFiles = glob.glob(dirD+'/CDM/z*/B*_cluster_0_*.json')
+    allFiles = glob.glob(dirD+'/%s/z*/B*_cluster_0_*.json' % dmModel) 
 
     
     listOfSelectionFunctions = []
     pklFileName = \
               '../output/CDM/selectionFunction/SF_data.pkl'
     for iFile in allFiles:
-  
-            
         fileName = iFile.split('/')[-1]
         zLens =  iFile.split('/')[-2]
   
@@ -102,28 +104,11 @@ def selectionFunctionIndividualLensesForData( ):
         listOfSelectionFunctions.append(finalMergedPDFdict)
         
     pkl.dump(listOfSelectionFunctions,open(pklFileName,'wb'), 2)
-            
-def selectFunctionForAllLenses():
-    
-    
-    dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
-             
-    allFiles = glob.glob(dirD+'/CDM/z*/B*_cluster_0_*.json')
-    
-   
-
-    pklFileName = \
-          '../output/CDM/selectionFunction/allHalosFiducialCosmology.pkl' \
-
-    finalMergedPDFdict = \
-         selectionFunction(allFiles, useLsst = 21)
-                                                                
-    pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
 
     
 
 def selectionFunction( listOfJsonFiles, cosmology=None, \
-                           medianRedshift=1.0, useLsst=27 ):
+                medianRedshift=1.0, useLsst=27, dmModel='CDM' ):
     '''
     Combine the given list of Json Files into a single 
     histogram.
@@ -147,7 +132,7 @@ def selectionFunction( listOfJsonFiles, cosmology=None, \
     for iJsonFile in listOfJsonFiles:
          cluster = \
            timeDelayDistribution( iJsonFile, cosmology=cosmology, \
-                                    outputPklFile='dontWrite')
+                                    outputPklFile='dontWrite', dmModel=dmModel)
         
          z0lens = cluster.zLens
          dzLens = zLenses[ np.arange(len(zLenses))[ z0lens == zLenses]+1] - z0lens
@@ -244,10 +229,6 @@ def getSourceRedshiftWeight( z, zMed=1.0 ):
     return weight
 
 if __name__ == "__main__":
-    #selectionFunctionEnsembleHalos()
-    #selectFunctionForAllLenses()
     #selectionFunctionIndividualLenses()
     #selectionFunctionIndividualLensesForData()
-    #selectionFunctionIndividualLensesForData()
-    #selectFunctionForAllLenses()
-    selectionFunctionEnsembleHalos()
+    selectionFunctionForAllDmModels()

@@ -28,8 +28,10 @@ class timeDelayDistribution:
                       timeDelayBins=None, \
                       outputPklFile=None, \
                      cosmology={},\
-                      zLens=None):
-                      
+                      zLens=None, \
+                      dmModel='CDM'):
+
+        self.dmModel = dmModel 
         self.cosmology={'H0':70, 'OmegaM':0.3, 'OmegaK':0., \
                                 'OmegaL':0.7}
         for i in cosmology.keys():
@@ -74,7 +76,7 @@ class timeDelayDistribution:
         dataDir = '/Users/DavidHarvey/Documents/Work/WDM/data/withProjections'
         halo = self.inputJsonFileName.split('/')[-1].split('_')[0]
         haloID = np.float(self.inputJsonFileName.split('/')[-1].split('_')[2])
-        haloDir = dataDir+'/'+halo+'_EAGLE_CDM/z_'+str(self.zLens)
+        haloDir = '%s/%s_EAGLE_%s/z_%s'  (dataDir, halo, self.dmModel, self.zLens)
         catalog = np.loadtxt(haloDir+'/catalog.dat',\
                         dtype=[('id',float),('idfof',float),\
                                ('m200',float),('r200',float)])
@@ -100,7 +102,8 @@ class timeDelayDistribution:
                   singleSourcePlaneDistribution( self.zLens, \
                             iSourcePlane, iTimeDelayData, \
                             cosmology=self.cosmology,\
-                            timeDelayBins=self.timeDelayBins)
+                            timeDelayBins=self.timeDelayBins,\
+                            dmModel=self.dmModel)
                             
             if iSourcePlaneDist.flag == -1:
                 continue
@@ -129,8 +132,9 @@ class singleSourcePlaneDistribution(timeDelayDistribution):
     '''
 
     def __init__( self, lensRedshift, jsonData, timeDelayData,  \
-                            cosmology=None,\
-                            timeDelayBins=None ):
+                        cosmology=None,\
+                        timeDelayBins=None,\
+                        dmModel='CDM'):
                             
         self.cosmology={'H0':70., 'OmegaM':0.3, 'OmegaK':0., \
                                 'OmegaL':0.7}
@@ -144,7 +148,7 @@ class singleSourcePlaneDistribution(timeDelayDistribution):
         self.timeDelayData = timeDelayData
         self.zLens = lensRedshift
         self.zSource = jsonData['z']
-
+        self.dmModel = dmModel
 
         self.getLineOfSightDistribution()
         self.getSourcePlaneWeighting()
@@ -303,7 +307,7 @@ class singleSourcePlaneDistribution(timeDelayDistribution):
 
         #Becasue i weight a single redshift by volume i need to normalise to number
         #of halos in the sample
-        lensWeight *= 1./len(glob.glob('../output/CDM/z_%0.2f/B*cluster_0_*_total*.json'% self.zLens))
+        lensWeight *= 1./len(glob.glob('../output/%s/z_%0.2f/B*cluster_0_*_total*.json'% (self.dmModel,self.zLens)))
 
 
         self.data["weight"] *= lensWeight / wrongSourceWeight * sourceWeight
@@ -315,7 +319,7 @@ class singleSourcePlaneDistribution(timeDelayDistribution):
         '''
         #this is breaking down z<0.3:
 
-        self.lineOfSightTable = getLoS.InterpolateLineOfSightTable('CDM',self.data['z'])
+        self.lineOfSightTable = getLoS.InterpolateLineOfSightTable(self.dmModel,self.data['z'])
         #Given that this will be in mu not kappa, and since mu = 2kappa
         pdfInMagnitudes = np.array([ i[3] for i in self.lineOfSightTable.data])
         magnitudes = np.array([ i[0] for i in self.lineOfSightTable.data])
