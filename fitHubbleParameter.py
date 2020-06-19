@@ -19,6 +19,8 @@ import ipdb as pdb
 from astropy.modeling import models
 from matplotlib import pyplot as plt
 
+from scipy.optimize import minimize
+
 
 def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
 
@@ -35,16 +37,17 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
       hubbleInterpolator.predictCDF( xTrue, thetaDict )
    
     
-    prior = priorOnParameters( thetaDict, hubbleInterpolator )
+    #prior = priorOnParameters( thetaDict, hubbleInterpolator )
     
-    prob = 1./np.sum((cumsumYtheory - yTrue)**2)
+    loss = np.sum((cumsumYtheory - yTrue)**2)
 
-    if np.isnan(prob):
+    if np.isnan(loss):
         pdb.set_trace()
         return -np.inf
 
-   
-    return prob*prior
+
+
+    return loss
     
 def priorOnParameters( thetaDict, hubbleInterpolator ):
 
@@ -84,6 +87,7 @@ def priorOnParameters( thetaDict, hubbleInterpolator ):
     zLensPrior = norm.pdf(thetaDict['zLens'], loc=0.55, scale=0.4)
  
     return 1
+
 class fitHubbleParameterClass:
     
     def __init__( self, pdf, hubbleInterpolator,\
@@ -111,38 +115,27 @@ class fitHubbleParameterClass:
 
         burn_len=100
         chain_len=1000
-        pos0 = np.random.rand(nwalkers,ndim)
-        pos0[:,0] = np.random.uniform( 0.6, 0.8, nwalkers) 
-        pos0[:,1] =  np.random.uniform( 0.2, 0.74, nwalkers)
-        pos0[:,2] =  np.random.uniform( -1.6,-2., nwalkers)
-        pos0[:,3] =  np.random.uniform( 10.9, 11.3, nwalkers)
-        pos0[:,4] =  np.random.uniform( 0.25, 0.35, nwalkers)
-        pos0[:,5] =  np.random.uniform( 0.65, 0.75, nwalkers)
+        pos0 = np.zeros(ndim)
+        pos0[0] = 0.7
+        pos0[1] =  0.4
+        pos0[2] =  -1.75
+        pos0[3] =  11.1
+        pos0[4] =  0.3
+        pos0[5] =  0.7
         #pos0[:,6] =  np.random.uniform( -0.02, 0.02, nwalkers)
         
 
         args = (self.pdf['x'], self.pdf['y'], \
                     self.pdf['error'], self.hubbleInterpolator )
 
-        dmsampler = emcee.EnsembleSampler(nwalkers, ndim, \
-                                            lnprob, \
-                                          args=args, \
-                                          threads=nthreads)
-                                          
-        pos, prob, state  = dmsampler.run_mcmc(pos0, burn_len, progress=True)
+        nll = lambda *args: lnprob(*args)
+
+        soln = minimize(nll, pos0, args=args)
+
+        self.maxLikeParams = soln.x
 
 
-    
-        pos, prob, state  = dmsampler.run_mcmc(pos, chain_len,\
-                                        progress=True)
-        self.samples = dmsampler.flatchain
-
-        errorLower, median, errorUpper = \
-          np.percentile(self.samples, [16, 50, 84], axis=0)
-
-        error = np.mean([median - errorLower, errorUpper - median], axis=0)
-
-        self.params = {'params':median, 'error':error}
+       
 
 
     def getPredictedProbabilities( self, xInput=None ):

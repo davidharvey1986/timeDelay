@@ -147,26 +147,27 @@ def main( ):
     plt.savefig('../plots/densityProfile.pdf')
     plt.show()
 
-def saveAllDensityProfileIndexes(load=True):
+def saveAllDensityProfileIndexes(dmModel='L11p2'):
     #So i dont have to recall the functiuon which takes a while
     #in the hubble interpolator
     
-    allJsonFiles = glob.glob('/Users/DavidHarvey/Documents/Work/TimeDelay/output/CDM/z*/*.json')
+    allJsonFiles = glob.glob('/Users/DavidHarvey/Documents/Work/TimeDelay/output/%s/z*/*.json' % dmModel)
 
     densityProfileIndex = np.zeros((len(allJsonFiles),2))
     rGrid = getRadGrid()
     for i, iJson in enumerate(allJsonFiles):
-        indexAndError =  getDensityProfileIndex( iJson, rGrid=None, nRadialBins=10, load=load)
+        indexAndError =  getDensityProfileIndex( iJson, rGrid=None, nRadialBins=10)
         densityProfileIndex[i,:] = indexAndError
     
     pkl.dump([allJsonFiles,densityProfileIndex], \
-                 open('pickles/densityProfileIndexes.pkl', 'wb'), 2)
+        open('%spickles/densityProfileIndexes.pkl' % dmModel, 'wb'), 2)
     
-def getDensityProfileIndex( jsonFileName, rGrid=None, nRadialBins=10):
+def getDensityProfileIndex( jsonFileName, rGrid=None, nRadialBins=10, dmModel='CDM'):
 
-    if os.path.isfile( 'pickles/densityProfileIndexes.pkl'):
+    pklFile = '%spickles/densityProfileIndexes.pkl' % dmModel
+    if os.path.isfile(pklFile ):
         jsonFiles, indexes = \
-          pkl.load(open('pickles/densityProfileIndexes.pkl','rb'))
+          pkl.load(open(pklFile,'rb'))
 
         matchedJson = '/'.join(jsonFileName.split('/')[-2:])
         matchedJsonToThese = \
@@ -273,6 +274,6 @@ def getAndPlotTrend( x, y, axis, fmt, color='grey', pltX=None, sigma=None):
     
 
 if __name__ == '__main__':
-    #saveAllDensityProfileIndexes()
-    main()
+    saveAllDensityProfileIndexes()
+    #main()
 

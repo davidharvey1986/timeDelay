@@ -29,7 +29,7 @@ class hubbleInterpolator:
 
     def __init__( self, nPrincipalComponents=6, minimumTimeDelay=0.001,\
                       allDistributionsPklFile=None, massCut=[0., 16], \
-                      regressorNoiseLevel=1e-3, dmModel='CDM'):
+                      regressorNoiseLevel=1e-2, dmModel='CDM'):
         '''
         inputTrainFeatures: a list of the cosmology keys to train over
         minimmumTimeDelay: should we expect a minimum possibly observed time delay 
@@ -52,8 +52,8 @@ class hubbleInterpolator:
         #How to split up the trianing sample to speed it up
         if allDistributionsPklFile is None:
             self.allDistributionsPklFile = \
-              "../output/%s/selectionFunction/"+\
-              "SF_fiducialCosmo.pkl.pkl"
+              "../output/%s/selectionFunction/SF_fiducialCosmo.pkl" \
+              % dmModel
         else:
             self.allDistributionsPklFile =\
               allDistributionsPklFile
@@ -107,7 +107,8 @@ class hubbleInterpolator:
 
             fileName = finalMergedPDFdict['fileNames'][0]
             
-            totalMassForHalo = getMass.getTotalMass( fileName)
+            totalMassForHalo = \
+              getMass.getTotalMass( fileName, dmModel=self.dmModel)
 
             if (totalMassForHalo < self.massCut[0]) |\
                (totalMassForHalo > self.massCut[1]):
@@ -278,7 +279,7 @@ class hubbleInterpolator:
             self.cosmologyFeatures = \
               np.append( self.cosmologyFeatures, np.array(tuple(iPoint),dtype = featureDtype))
 
-        pdb.set_trace()
+        
         self.interpolatorFunction = LinearRegression()
         self.interpolatorFunction.fit(points, values)
         

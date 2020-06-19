@@ -101,9 +101,8 @@ def getPredictedConstraints(nIterations = 100,\
                                 minimumTimeDelay=0.):
 
 
-    
     hubbleInterpolaterClass = \
-          hubbleModel.hubbleInterpolator(minimumTimeDelay=minimumTimeDelay )
+          hubbleModel.hubbleInterpolator()
     
     if minimumTimeDelay > 0:
         hubbleInterpolaterClass.getTrainingData(pklFile='picklesMinimumDelay/trainingDataWithMass.pkl')
@@ -129,13 +128,13 @@ def getPredictedConstraints(nIterations = 100,\
         if estimates is None:
             estimates = np.zeros((samples.shape[1], 2, nSampleSizes))
 
-        for iPar in range(samples.shape[1]):
-            median, error =  getModeAndError( samples[:,iPar])
+        #for iPar in range(samples.shape[1]):
+        #    median, error =  getModeAndError( samples[:,iPar])
+            
+        estimates[:, 0, i] = np.std(samples, axis=0)   
+        estimates[:, 1, i] = np.std(samples, axis=0)*0.1
 
-            estimates[iPar, 0, i] = median
-            estimates[iPar, 1, i] = error
-        
-    
+
     return sampleSizes, estimates
 
 
@@ -146,10 +145,10 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
     samples = None
     
     if minimumTimeDelay > 0:
-        pklFile = 'picklesMinimumDelay/multiFitSamples_withMass_%i.pkl' \
+        pklFile = 'picklesMinimumDelay/maxLike_%i.pkl' \
           % (iSampleSize)
     else:
-        pklFile = 'exactPDFpickles/multiFitSamples_withMass_%i.pkl' \
+        pklFile = 'exactPDFpickles/maxLike_%i.pkl' \
           % iSampleSize
     
 
@@ -165,14 +164,13 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
         fitHubbleClass = \
               fitHubble.fitHubbleParameterClass( selectedTimeDelays, \
                                     hubbleInterpolaterClass)
-
-        y, x = np.histogram(fitHubbleClass.samples[:,0])
-        xc = (x[1:] + x[:-1])/2.
+       
+       
             
         if samples is None:
-            samples = fitHubbleClass.samples
+            samples = fitHubbleClass.maxLikeParams
         else:
-            samples = np.vstack( (samples, fitHubbleClass.samples))
+            samples = np.vstack( (samples, fitHubbleClass.maxLikeParams))
 
 
 
@@ -187,20 +185,10 @@ def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0.):
 
     '''
     #Real world inerpolator
-    
-    dataSelectionFunction = '../output/CDM/selectionFunction/SF_data.pkl'
-          
+              
     realWorldInterpolator = \
-          hubbleModel.hubbleInterpolator(allDistributionsPklFile=dataSelectionFunction,\
-                                 regressorNoiseLevel=1e-3)
-
-    
-    #realWorldInterpolator = \
-    #  hubbleModel.hubbleInterpolator( )
-    
-    #realWorldInterpolator.getTrainingData('pickles/trainingDataWithMass.pkl')
-    
-    realWorldInterpolator.getTrainingData('pickles/trainingDataWithMassForDataTrainingSet.pkl')
+          hubbleModel.hubbleInterpolator()
+    realWorldInterpolator.getTrainingData('pickles/trainingDataWithMass.pkl')
     realWorldInterpolator.getTimeDelayModel()
 
     if minimumTimeDelay == 0:
@@ -208,7 +196,7 @@ def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0.):
         
     logMinimumTimeDelay = np.log10(minimumTimeDelay)
 
-    interpolateToTheseTimes= np.linspace(-3, 3, 1e6)
+    interpolateToTheseTimes= np.linspace(-3, 3, np.int(1e6))
       
     inputParams = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., 'OmegaL':0.7, \
         'zLens':0.40, 'densityProfile':-1.75, 'totalMass':11.1}
@@ -269,7 +257,7 @@ def getModeAndError( samples ):
         indivError.append( np.std( iSample ))
         
 
-
+    
     #error = np.sqrt(np.sum((np.array(maxLike)-0.7)**2)/len(maxLike))
 
     maxLikeMean = np.mean(np.array(maxLike))
