@@ -105,9 +105,9 @@ def getPredictedConstraints(nIterations = 100,\
           hubbleModel.hubbleInterpolator()
     
     if minimumTimeDelay > 0:
-        hubbleInterpolaterClass.getTrainingData(pklFile='picklesMinimumDelay/trainingDataWithMass.pkl')
+        hubbleInterpolaterClass.getTrainingData(pklFile='picklesMinimumDelay/trainingData.pkl')
     else:
-        hubbleInterpolaterClass.getTrainingData('pickles/trainingDataWithMass.pkl')
+        hubbleInterpolaterClass.getTrainingData('pickles/trainingData.pkl')
 
     hubbleInterpolaterClass.getTimeDelayModel()
   
@@ -117,7 +117,7 @@ def getPredictedConstraints(nIterations = 100,\
 
 
     #Loop through each sample size
-    for i, iSampleSize in enumerate(sampleSizes[:-1]):
+    for i, iSampleSize in enumerate(sampleSizes[::-1]):
         print("Sample Size: %i" % (iSampleSize))
 
         samples = \
@@ -145,10 +145,10 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
     samples = None
     
     if minimumTimeDelay > 0:
-        pklFile = 'picklesMinimumDelay/maxLike_%i.pkl' \
+        pklFile = 'picklesMinimumDelay/maxLikeNSub_%i.pkl' \
           % (iSampleSize)
     else:
-        pklFile = 'exactPDFpickles/maxLike_%i.pkl' \
+        pklFile = 'exactPDFpickles/maxLikeNSub_%i.pkl' \
           % iSampleSize
     
 
@@ -172,8 +172,8 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
         else:
             samples = np.vstack( (samples, fitHubbleClass.maxLikeParams))
 
-
-
+            
+    
     pkl.dump(samples, open(pklFile, 'wb'))
         
     return samples
@@ -188,7 +188,8 @@ def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0.):
               
     realWorldInterpolator = \
           hubbleModel.hubbleInterpolator()
-    realWorldInterpolator.getTrainingData('pickles/trainingDataWithMass.pkl')
+    realWorldInterpolator.getTrainingData('pickles/trainingData.pkl')
+    
     realWorldInterpolator.getTimeDelayModel()
 
     if minimumTimeDelay == 0:
@@ -199,7 +200,8 @@ def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0.):
     interpolateToTheseTimes= np.linspace(-3, 3, np.int(1e6))
       
     inputParams = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., 'OmegaL':0.7, \
-        'zLens':0.40, 'densityProfile':-1.75, 'totalMass':11.1}
+        'zLens':0.40, 'densityProfile':-1.75, 'totalMass':11.1, \
+                       'nSubstructure':4}
         
     interpolatedCumSum = \
           realWorldInterpolator.predictCDF( interpolateToTheseTimes, inputParams )

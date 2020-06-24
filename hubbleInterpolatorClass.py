@@ -18,7 +18,7 @@ from scipy.interpolate import LinearNDInterpolator
 from sklearn.linear_model import LinearRegression
 from scipy.ndimage import gaussian_filter as gauss
 from sklearn import preprocessing
-
+from medianTimeFunctionSubstructure import substructure
 
 
 class hubbleInterpolator:
@@ -62,7 +62,9 @@ class hubbleInterpolator:
           "../output/CDM/selectionFunction/"+\
           "sparselyPopulatedParamSpace.pkl"
     
-    def getTrainingData( self, pklFile = 'exactPDFpickles/trainingData.pkl' ):
+    def getTrainingData( self, \
+        pklFile = 'exactPDFpickles/trainingData.pkl',\
+                             minLogMass=7):
         '''
         Import all the json files from a given lens redshift
         Train only the fiducial cosmology and then interpolate a shift
@@ -76,6 +78,7 @@ class hubbleInterpolator:
                 self.features,  self.timeDelays, self.pdfArray =  \
                 pkl.load(open(pklFile, 'rb'))
                 self.nFeatures = len(self.features.dtype)
+
                 return
     
 
@@ -88,7 +91,8 @@ class hubbleInterpolator:
         cosmoKeys =  allDistributions[0]['cosmology'].keys()
         
         featureDtype = \
-          [( ('zLens',float) ), ('densityProfile', float), ('totalMass', float) ]
+          [( ('zLens',float) ), ('densityProfile', float), \
+           ('totalMass', float), ('nSubstructure', float) ]
 
         features = np.array([], dtype=featureDtype)
         self.nFeatures = len(features.dtype)
@@ -114,7 +118,8 @@ class hubbleInterpolator:
                (totalMassForHalo > self.massCut[1]):
                continue
 
-
+            nSubstructure = \
+              substructure( fileName, minLogMass=minLogMass)
               
             zLensStr = fileName.split('/')[-2]
             zLens = np.float(zLensStr.split('_')[1])
@@ -140,7 +145,8 @@ class hubbleInterpolator:
             densityProfile = \
               getDensity.getDensityProfileIndex(fileName)[0]
 
-            allPars = [ zLens, densityProfile, totalMassForHalo]
+            allPars = \
+              [ zLens, densityProfile, totalMassForHalo,nSubstructure]
 
             iFeature = np.array(allPars, dtype=features.dtype)
 
@@ -311,7 +317,7 @@ class hubbleInterpolator:
         
         self.nFreeParameters = len(self.fiducialCosmology.keys())+\
           len(self.features.dtype)
-
+ 
         #+2 for the widht of the distributions
 
     def getGaussProcessLogLike( self, theta=None ):
@@ -331,7 +337,7 @@ class hubbleInterpolator:
         #parse the input parameters
         
 
-        inputFeatureNames = ['zLens','densityProfile','totalMass']
+        inputFeatureNames = ['zLens','densityProfile','totalMass','nSubstructure']
         
         inputFeatures = \
           np.array([ inputFeatureDict[i] for i in inputFeatureNames ])

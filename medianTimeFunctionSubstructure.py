@@ -5,10 +5,10 @@ font = { 'size'   : 15}
 
 matplotlib.rc('font', **font)
 
-def medianTimeFunctionSubstructure():
+def medianTimeFunctionSubstructure(axArr, dmModel='CDM', **kwargs):
     
 
-    plt.figure(figsize=(7,7))
+    #plt.figure(figsize=(7,7))
     #For aesthetics                                                                                         
     jet = cm = plt.get_cmap('Reds')
     cNorm  = colors.Normalize(vmin=2.8, vmax=3.)
@@ -17,10 +17,11 @@ def medianTimeFunctionSubstructure():
     #####
 
 
-    pklFile = 'pickles/medianTimeFunctionSubstructure.pkl'
+    pklFile = 'pickles/medianTimeFunctionSubstructure_%s.pkl' \
+      % dmModel
 
     if not os.path.isfile(pklFile):
-        getHaloStats(pklFile)
+        getHaloStats(pklFile, dmModel)
 
     nHalos, tPeak, tPeakError, medTime, maxTime = \
           pkl.load(open(pklFile, 'rb'))
@@ -45,31 +46,35 @@ def medianTimeFunctionSubstructure():
         maxTimeAv.append(np.mean(maxTime[i==nHalos]))
         maxTimeAvErr.append(np.std(maxTime[i==nHalos])/np.sqrt(len(maxTime[i==nHalos])))
         
-    plt.errorbar( np.unique(np.array(nHalos))-1, medTimeAv, yerr=medTimeAvErr, fmt='o', color='black', label=r'$\log(\Delta t)_{\rm med}$', capsize=2.)
-    plt.errorbar( np.unique(np.array(nHalos))-1, maxTimeAv, yerr=maxTimeAvErr, fmt='o', color='red', label=r'$\log(\Delta t)_{\rm max}$', capsize=2.)
-    plt.legend()
+    axArr[0].errorbar( np.unique(np.array(nHalos))-1, medTimeAv, \
+        yerr=medTimeAvErr, **kwargs)
+    axArr[1].errorbar( np.unique(np.array(nHalos))-1, maxTimeAv, \
+        yerr=maxTimeAvErr, **kwargs)
+    axArr[0].legend()
 
 
     
-    plt.xlabel(r'Number Substructures > $10^7M_\odot$')
-    plt.ylabel(r'$\log(\Delta t)$')
-    plt.savefig('../plots/FunctionOfSubstructure.pdf')
-    plt.show()
-def getNumHalos( minLogMass):
-    allFiles = glob.glob('../output/CDM/z_0.*/B*cluster_0_*_total*.json')
+    axArr[1].set_xlabel(r'Number Substructures > $10^7M_\odot$')
+    axArr[0].set_ylabel(r'$\log(\Delta t)$')
+    axArr[1].set_ylabel(r'$\log(\Delta t)$')
+    
+def getNumHalos( minLogMass, dmModel='CDM'):
+    allFiles = \
+      glob.glob('../output/%s/z_0.*/B*cluster_0_*_total*.json' % dmModel)
 
-    return np.array([ substructure(i, minLogMass=minLogMass) for i in allFiles])
-def getHaloStats(pklFile):
+    return \
+      np.array([ substructure(i, minLogMass=minLogMass, dmModel=dmModel) \
+                          for i in allFiles])
+def getHaloStats(pklFile, dmModel):
     tPeak = []
     tPeakError = []
     medTime = []
     maxTime = []
     nHalos = []
 
-    allDistributionsPklFile = \
-              "../output/CDM/selectionFunction/"+\
-              "sparselyPopulatedParamSpace.pkl"
 
+    allDistributionsPklFile = \
+          '../output/%s/selectionFunction/SF_data.pkl' % dmModel
     allDistributions = \
       pkl.load(open(allDistributionsPklFile,'rb'))
     fiducialCosmology = \
@@ -105,5 +110,20 @@ def getHaloStats(pklFile):
 
 
 if __name__ == '__main__':
-    medianTimeFunctionSubstructure()
+    gs = matplotlib.gridspec.GridSpec(2,1)
 
+    axArr = \
+      [plt.subplot(gs[0,0]), plt.subplot(gs[1,0])]
+
+    kwargs = \
+      {'capsize':2, 'label':'CDM', 'color':'red'}
+    medianTimeFunctionSubstructure(axArr, dmModel='CDM', **kwargs)
+    kwargs = \
+      {'capsize':2, 'label':'L8', 'color':'blue'}
+    medianTimeFunctionSubstructure(axArr, dmModel='L8', **kwargs)
+    kwargs = \
+      {'capsize':2, 'label':'L11p2', 'color':'green'}
+    medianTimeFunctionSubstructure(axArr, dmModel='L11p2', **kwargs)
+
+    plt.savefig('../plots/FunctionOfSubstructure.pdf')
+    plt.show()

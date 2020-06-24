@@ -148,7 +148,7 @@ def func(x, a, b):
     return a  + x*b
 
 def getTotalMass( jsonFileName, rGrid=None, radialCut=50., dmModel='CDM'):
-    pklFile = '%s/totalMasses.pkl' % dmModel
+    pklFile = '%spickles/totalMasses.pkl' % dmModel
     
     if os.path.isfile( pklFile ):
         jsonFiles, masses = \

@@ -29,22 +29,19 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
        'zLens':theta[1], \
        'densityProfile':theta[2], \
         'totalMass':theta[3], \
-        'OmegaM':theta[4], \
-        'OmegaL':theta[5], \
+        'nSubstructure':theta[4], \
+        'OmegaM':theta[5], \
+        'OmegaL':theta[6], \
          'OmegaK':0.}
 
-    cumsumYtheory = \
-      hubbleInterpolator.predictCDF( xTrue, thetaDict )
+    cumsumYtheory = hubbleInterpolator.predictCDF( xTrue, thetaDict )
    
     
-    #prior = priorOnParameters( thetaDict, hubbleInterpolator )
+    prior = priorOnParameters( thetaDict, hubbleInterpolator )
     
-    loss = np.sum((cumsumYtheory - yTrue)**2)
+    loss = np.sum((cumsumYtheory - yTrue)**2)*prior
 
-    if np.isnan(loss):
-        pdb.set_trace()
-        return -np.inf
-
+    
 
 
     return loss
@@ -59,7 +56,7 @@ def priorOnParameters( thetaDict, hubbleInterpolator ):
            (thetaDict[iThetaKey] > \
                     np.max(hubbleInterpolator.features[iThetaKey])):
 
-            return -np.inf
+            return np.inf
 
 
     for iCosmoKey in hubbleInterpolator.cosmologyFeatures.dtype.names:
@@ -78,11 +75,11 @@ def priorOnParameters( thetaDict, hubbleInterpolator ):
        
         if (thetaDict[iCosmoKey] < priorMidPoint-priorRange/2.) | \
           (thetaDict[iCosmoKey] > priorMidPoint+priorRange/2.):
-            return -np.inf
+            return np.inf
     
     if (thetaDict['H0'] < 0.6) | (thetaDict['H0'] > 0.8):
         
-        return -np.inf
+        return np.inf
 
     zLensPrior = norm.pdf(thetaDict['zLens'], loc=0.55, scale=0.4)
  
@@ -112,7 +109,7 @@ class fitHubbleParameterClass:
         nwalkers = 20
 
         ndim = self.hubbleInterpolator.nFreeParameters - 1
-
+        print(ndim)
         burn_len=100
         chain_len=1000
         pos0 = np.zeros(ndim)
@@ -120,9 +117,10 @@ class fitHubbleParameterClass:
         pos0[1] =  0.4
         pos0[2] =  -1.75
         pos0[3] =  11.1
-        pos0[4] =  0.3
-        pos0[5] =  0.7
-        #pos0[:,6] =  np.random.uniform( -0.02, 0.02, nwalkers)
+        pos0[4] =  4
+        pos0[5] =  0.32
+        pos0[6] =  0.72
+        
         
 
         args = (self.pdf['x'], self.pdf['y'], \

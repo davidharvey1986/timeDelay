@@ -14,31 +14,20 @@ import lensing_parameters as lensing
 from matplotlib import colors as mcolors
 
 
-def monteCarlo( nMonteCarlo=100 ):
+def main( dmModel='CDM', nBootStraps=1000 ):
 
-    params = np.array([])
-
-    allSamples  = None
-    maxLike = []
     labels = \
         [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',\
             r'$\alpha$', r'$log(M(<5kpc)/M_\odot)$',\
            r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$' ]
-           
-    for iMonteCarlo in np.arange(nMonteCarlo):
-        pklFile = '%i_monteCarlo_withMass_LCDM.pkl' % iMonteCarlo
-
-        samples = main(pklFile=pklFile, monteCarlo=True)
-
-        if allSamples is None:
-            allSamples = samples
-        else:
-            allSamples = np.vstack((allSamples, samples))
-            
-        y, x = np.histogram(samples[:,0], bins=100)
-        xc = (x[1:] + x[:-1])/2.
-        
-        maxLike.append(xc[np.argmax(y)])
+  
+    
+    pklFile = 'pickles/%s_monteCarlo_withMass_LCDM.pkl' % dmModel
+    if os.path.isfile( pklFile ):
+        allSamples = pkl.load(open(pklFile,'rb'))
+    else:
+        allSamples = bootStrapData( dmModel='CDM', nBootStraps=nBootStraps )
+        pkl.dump(allSamples, open(pklFile, 'wb'))
         
     nsamples = allSamples.shape[0]
     #plotMockedData( figcorner)
@@ -51,89 +40,49 @@ def monteCarlo( nMonteCarlo=100 ):
                       hist_kwargs={'linewidth':3.},\
                       contour_kwargs={'linewidths':3.}, smooth=True)
                       
-    for i in range(samples.shape[1]):
+    for i in range(allSamples.shape[1]):
         lo, med, hi = np.percentile(allSamples[:,i],[16,50,84])
         print( med, med-lo, hi-med)
 
 
-    figcorner.savefig('../plots/LCDMresults.pdf')
+    figcorner.savefig('../plots/%s_LCDMresults.pdf' % dmModel)
     plt.show()
-        
-def main(pklFile='fitDataToModel_LCDMk.pkl', \
-             monteCarlo=False, dmModel='L11p2'):
-    
-    if not os.path.isfile( 'pickles/monteCarlosOfData/%s' % pklFile ):
-        
-        selectedTimeDelays = getObservations(monteCarlo=monteCarlo)
 
-        dataSelectionFunction = \
+def bootStrapData( dmModel='CDM', nBootStraps=10):
+    dataSelectionFunction = \
           '../output/%s/selectionFunction/SF_data.pkl' % dmModel
           
-        hubbleInterpolaterClass = \
+    hubbleInterpolaterClass = \
           hubbleInterpolator(allDistributionsPklFile=dataSelectionFunction,\
                                  regressorNoiseLevel=1e-3, dmModel=dmModel)
 
-        hubbleInterpolaterClass.getTrainingData('%spickles/trainingDataForObsWithMass.pkl' % dmModel)
+    hubbleInterpolaterClass.getTrainingData('%spickles/trainingDataForObsWithMass.pkl'\
+                                                % dmModel)
         
-        hubbleInterpolaterClass.getTimeDelayModel()
-    
+    hubbleInterpolaterClass.getTimeDelayModel()
+    allSamples  = None
+        
+    for iBootStrap in np.arange(nBootStraps):
+        print("%i/%i" % (iBootStrap+1, nBootStraps))
+        iParams = fitModelToDataBootStrap(hubbleInterpolaterClass)
 
+        if allSamples is None:
+            allSamples = iParams
+        else:
+            allSamples = np.vstack((allSamples, iParams))
+
+    return allSamples
+            
+def fitModelToDataBootStrap( model ):
     
-        fitHubbleClass = \
+        
+    selectedTimeDelays = getObservations(monteCarlo=True)
+
+    fitHubbleClass = \
           fitHubble.fitHubbleParameterClass( selectedTimeDelays, \
-                                    hubbleInterpolaterClass)
+                                    model)
 
-        pkl.dump(fitHubbleClass.samples,open('%spickles/monteCarlosOfData/%s' % (dmModel,pklFile),'wb'))
-        samples = fitHubbleClass.samples
-    else:
-        
-        samples = pkl.load(open( '%spickles/monteCarlosOfData/%s' \
-                            % (dmModel, pklFile),'rb'))
-
-    if monteCarlo:
-        return samples
-    
-    ndim = samples.shape[1]
-    figcorner, axarr = plt.subplots(ndim,ndim,figsize=(8,8))
-
-    parRange = [[0.55,0.8],[0.45,0.6],[-2.,-1.6]]
-    labels = \
-      [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$', r'$log(M(<5kpc)/M_\odot)$'\
-           r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$', r'$Sigma' ]
-    nsamples = samples.shape[0]
-    #plotMockedData( figcorner)
-    
-    corner.corner(samples,  levels=[0.68], bins=20,\
-                    plot_datapoints=False, labels=labels, fig=figcorner,\
-                      weights=np.ones(nsamples)/nsamples, color='black', \
-                      hist_kwargs={'linewidth':3.},\
-                      contour_kwargs={'linewidths':3.}, smooth=True)
-    '''
-    axarr[1,1].set_xlim( 0.3, 1.0)
-    axarr[2,2].set_xlim( -2, -1.5)
-    axarr[1,0].set_ylim( 0.3, 1.0)
-    axarr[2,0].set_ylim(  -2, -1.5)
-    axarr[2,1].set_ylim(  -2, -1.5)
-    axarr[2,1].set_xlim( 0.3, 1.0)
-    axarr[0,0].set_xlim( 0.6, 0.8)
-    axarr[1,0].set_xlim( 0.6, 0.8)
-    axarr[2,0].set_xlim( 0.6, 0.8)
-    axarr[0,0].set_xlim(0.6, 0.8)
-    axarr[1,1].set_xlim(0.3, 1.0)
-    axarr[2,2].set_xlim(-2, -1.5)
-    axarr[0,0].set_ylim(0., 0.1)
-    axarr[1,1].set_ylim(0., 0.3)
-    axarr[2,2].set_ylim(0., 0.3)
-    '''
-    for i in range(samples.shape[1]):
-        lo, med, hi = np.percentile(samples[:,i],[16,50,84])
-        print( med, med-lo, hi-med)
-
-    plt.savefig('../plots/fitDataToModel.pdf')
-
-    plt.show()
-
-
+    return fitHubbleClass.maxLikeParams
   
     
 
@@ -164,7 +113,7 @@ def plotMockedData(fig, nIterations=10):
                           color='red', \
                       hist_kwargs={'linewidth':2.},\
                       contour_kwargs={'linewidths':2.})
-    pdb.set_trace()
+
 
     
 def getObservations(nBins=20, monteCarlo=False):
@@ -205,8 +154,6 @@ def getObservations(nBins=20, monteCarlo=False):
                                 z0=data['zl'][ind][i])\
                for i in range(len(data[ind]))])
     ds = np.array([ lensing.ang_distance(i) for i in data['zs'][ind]])
-    print("GAUSS PRIOR", np.sum(dls/(ds*dl)*data['zl'][ind])/np.sum(dls/(ds*dl)))
-
 
     return {'x':xcentres, 'y':cumsumY, 'error':cumsumYError}
 
@@ -265,7 +212,9 @@ def writeResultsToTex(nMonteCarlo=100):
     resultsFile.close()
 if __name__ == '__main__':
     #writeResultsToTex()
-    main()
+    main(dmModel='CDM')
+    main(dmModel='L11p2')
+    main(dmModel='L8')
     #monteCarlo()
     
     

@@ -217,7 +217,7 @@ def getDensityProfile( jsonFileName, rGrid=None, nRadialBins=10):
     return np.log10(radialBinCenters), np.log10(density)
 
 
-def substructure( jsonFileName, minLogMass = 7 ):
+def substructure( jsonFileName, minLogMass = 7, dmModel='CDM' ):
     '''
     see if there is a halo in the projcted distance
     '''
@@ -227,8 +227,8 @@ def substructure( jsonFileName, minLogMass = 7 ):
     projection = jsonFileName.split('/')[-1].split('_')[3]
     redshift = jsonFileName.split('/')[-2]
     dataFileName = \
-      dataDir+haloName+'_EAGLE_CDM/'+redshift+\
-      '/GALAXY_CATALOGS/cluster_0_'+projection+'_galaxy_catalog.dat'
+     '%s/%s_EAGLE_%s/%s/GALAXY_CATALOGS/cluster_0_%s_galaxy_catalog.dat' %\
+     (dataDir, haloName, dmModel, redshift, projection)
 
     data = np.loadtxt(dataFileName, \
             dtype=[('id',int), ('x', float), ('y', float), ('z', float), \
