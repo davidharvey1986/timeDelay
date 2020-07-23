@@ -34,12 +34,12 @@ def main():
 
     gs = None
 
-    inputPar = [0.7, 0.4, 1.75, 11.05, 0.3, 0.7]
+    inputPar = [0.7, 0.4, 1.75, 11.05, 4.0, 0.3, 0.7]
     colors = ['red','blue']
 
-    lims = [(0.,6.), (0.,40.), (0., 8.), (0.,1.0), (5.,11.5), (1.5,5.)]
+    lims = [(0.,6.), (0.,40.), (0., 8.), (0.,1.0), (0., 10.), (5.,11.5), (1.5,5.)]
     
-    for iColor, minTime in enumerate([0., 10.]):
+    for iColor, minTime in enumerate([0.]):
         sampleSizes, estimates = \
             getPredictedConstraints(minimumTimeDelay=minTime)
 
@@ -48,12 +48,14 @@ def main():
         for iPar in range(estimates.shape[0]):
             ax = plt.subplot(gs[iPar,0])
 
-            ax.errorbar( sampleSizes*(1.+iColor/50.), \
+            try:
+                ax.errorbar( sampleSizes*(1.+iColor/50.), \
                     estimates[iPar, 0,:]/inputPar[iPar]*100., \
                     yerr=estimates[iPar, 1,:]/inputPar[iPar]*100.,\
                   label=r'$\Delta t_{\rm min} = 0$ days', \
                       color=colors[iColor], fmt='o', capsize=3)
-
+            except:
+                pdb.set_trace()
             if minTime == 10:
                 constraints3000 = \
                   np.interp( 3000, sampleSizes, \
@@ -97,8 +99,8 @@ def main():
     plt.show()
 
 
-def getPredictedConstraints(nIterations = 100,\
-                                nSampleSizes = 16,\
+def getPredictedConstraints(nIterations = 1,\
+                                nSampleSizes = 4,\
                                 minimumTimeDelay=0.):
 
 
@@ -118,7 +120,7 @@ def getPredictedConstraints(nIterations = 100,\
 
 
     #Loop through each sample size
-    for i, iSampleSize in enumerate(sampleSizes[::-1]):
+    for i, iSampleSize in enumerate(sampleSizes):
         print("Sample Size: %i" % (iSampleSize))
 
         samples = \
@@ -132,7 +134,7 @@ def getPredictedConstraints(nIterations = 100,\
         #for iPar in range(samples.shape[1]):
         #    median, error =  getModeAndError( samples[:,iPar])
             
-        estimates[:, 0, i] = np.std(samples, axis=0)   
+        estimates[:, 0, i] = np.std(samples, axis=0)
         estimates[:, 1, i] = np.std(samples, axis=0)*0.1
 
 
@@ -169,12 +171,12 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
        
             
         if samples is None:
-            samples = fitHubbleClass.maxLikeParams
+            samples = fitHubbleClass.samples
         else:
-            samples = np.vstack( (samples, fitHubbleClass.maxLikeParams))
+            samples = np.vstack( (samples, fitHubbleClass.samples))
 
             
-    
+        
     pkl.dump(samples, open(pklFile, 'wb'))
         
     return samples
@@ -237,7 +239,6 @@ def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0., \
         cumsumYError = \
           generateVarianceInCumSumSample( nSamples, nBootStraps=100)
         trueY = realWorldInterpolator.predictCDF( xcentres, inputParams )
-        pdb.set_trace()
         return {'x':xcentres, 'y':trueY,  'error':cumsumYError}
     else:
         return {'x':xcentres, 'y':cumsumY}
@@ -258,7 +259,7 @@ def generateVarianceInCumSumSample( nObservations, nBootStraps=100):
         bar.update(iBootStrap+1)
         
         iStrappePDF = \
-              selectRandomSampleOfTimeDelays( nObservations, getError=False)
+          selectRandomSampleOfTimeDelays( nObservations, getError=False)
 
         cumsum =  np.cumsum(iStrappePDF['y'])/np.sum(iStrappePDF['y'])
         if variance is None:

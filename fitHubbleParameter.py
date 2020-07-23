@@ -19,8 +19,6 @@ import ipdb as pdb
 from astropy.modeling import models
 from matplotlib import pyplot as plt
 
-from scipy.optimize import minimize
-
 
 def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
 
@@ -29,19 +27,29 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
        'zLens':theta[1], \
        'densityProfile':theta[2], \
         'totalMass':theta[3], \
-        'nSubstructure':theta[4], \
+                'nSubstructure':theta[4], \
         'OmegaM':theta[5], \
         'OmegaL':theta[6], \
          'OmegaK':0.}
 
-    cumsumYtheory = hubbleInterpolator.predictCDF( xTrue, thetaDict )
+    cumsumYtheory = \
+      hubbleInterpolator.predictCDF( xTrue, thetaDict )
    
     
     prior = priorOnParameters( thetaDict, hubbleInterpolator )
     
-    loss = np.sum((cumsumYtheory - yTrue)**2)*prior
+    #prob = 1./np.sum((cumsumYtheory - yTrue)**2)
+    error = np.mean(error, axis=0)
+    error[ error == 0] = np.min(error[error!=0])
 
-    return loss
+    prob = np.sum(norm.pdf( cumsumYtheory, yTrue, error))
+
+    if np.isnan(prob):
+        pdb.set_trace()
+        return -np.inf
+
+
+    return prob*prior
     
 def priorOnParameters( thetaDict, hubbleInterpolator ):
 
@@ -53,7 +61,7 @@ def priorOnParameters( thetaDict, hubbleInterpolator ):
            (thetaDict[iThetaKey] > \
                     np.max(hubbleInterpolator.features[iThetaKey])):
 
-            return np.inf
+            return -np.inf
 
 
     for iCosmoKey in hubbleInterpolator.cosmologyFeatures.dtype.names:
@@ -72,16 +80,15 @@ def priorOnParameters( thetaDict, hubbleInterpolator ):
        
         if (thetaDict[iCosmoKey] < priorMidPoint-priorRange/2.) | \
           (thetaDict[iCosmoKey] > priorMidPoint+priorRange/2.):
-            return np.inf
+            return -np.inf
     
     if (thetaDict['H0'] < 0.6) | (thetaDict['H0'] > 0.8):
         
-        return np.inf
+        return -np.inf
 
     zLensPrior = norm.pdf(thetaDict['zLens'], loc=0.55, scale=0.4)
  
     return 1
-
 class fitHubbleParameterClass:
     
     def __init__( self, pdf, hubbleInterpolator,\
@@ -106,31 +113,42 @@ class fitHubbleParameterClass:
         nwalkers = 20
 
         ndim = self.hubbleInterpolator.nFreeParameters - 1
-        print(ndim)
-        burn_len=100
-        chain_len=1000
-        pos0 = np.zeros(ndim)
-        pos0[0] = 0.7
-        pos0[1] =  0.4
-        pos0[2] =  -1.75
-        pos0[3] =  11.1
-        pos0[4] =  4
-        pos0[5] =  0.32
-        pos0[6] =  0.72
+
+        burn_len=1000
+        chain_len=10000
+        pos0 = np.random.rand(nwalkers,ndim)
+        pos0[:,0] = np.random.uniform( 0.6, 0.8, nwalkers) 
+        pos0[:,1] =  np.random.uniform( 0.2, 0.74, nwalkers)
+        pos0[:,2] =  np.random.uniform( -1.6,-2., nwalkers)
+        pos0[:,3] =  np.random.uniform( 10.9, 11.3, nwalkers)
+        pos0[:,4] =  np.random.uniform( 0, 4.0, nwalkers)
+        pos0[:,5] =  np.random.uniform( 0.25, 0.35, nwalkers)
+        pos0[:,6] =  np.random.uniform( 0.65, 0.75, nwalkers)
         
         
 
         args = (self.pdf['x'], self.pdf['y'], \
                     self.pdf['error'], self.hubbleInterpolator )
 
-        nll = lambda *args: lnprob(*args)
+        dmsampler = emcee.EnsembleSampler(nwalkers, ndim, \
+                                            lnprob, \
+                                          args=args, \
+                                          threads=nthreads)
+                                          
+        pos, prob, state  = dmsampler.run_mcmc(pos0, burn_len, progress=True)
 
-        soln = minimize(nll, pos0, args=args)
 
-        self.maxLikeParams = soln.x
+    
+        pos, prob, state  = dmsampler.run_mcmc(pos, chain_len,\
+                                        progress=True)
+        self.samples = dmsampler.flatchain
 
+        errorLower, median, errorUpper = \
+          np.percentile(self.samples, [16, 50, 84], axis=0)
 
-       
+        error = np.mean([median - errorLower, errorUpper - median], axis=0)
+
+        self.params = {'params':median, 'error':error}
 
 
     def getPredictedProbabilities( self, xInput=None ):
