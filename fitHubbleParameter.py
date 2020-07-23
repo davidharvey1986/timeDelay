@@ -40,9 +40,9 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     
     #prob = 1./np.sum((cumsumYtheory - yTrue)**2)
     error = np.mean(error, axis=0)
-    error[ error == 0] = np.min(error[error!=0])
+    #error[ error == 0] = np.min(error[error!=0])
 
-    prob = np.sum(norm.pdf( cumsumYtheory, yTrue, error))
+    prob = np.nansum(norm.logpdf( cumsumYtheory, yTrue, scale=error))
 
     if np.isnan(prob):
         pdb.set_trace()

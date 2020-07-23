@@ -22,7 +22,7 @@ def main( dmModel='CDM', nBootStraps=1000 ):
            r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$' ]
   
     
-    pklFile = 'pickles/%s_monteCarlo_withMass_LCDM.pkl' % dmModel
+    pklFile = 'pickles/%s_bootStrapped.pkl' % dmModel
     if os.path.isfile( pklFile ):
         allSamples = pkl.load(open(pklFile,'rb'))
     else:
@@ -48,7 +48,8 @@ def main( dmModel='CDM', nBootStraps=1000 ):
     figcorner.savefig('../plots/%s_LCDMresults.pdf' % dmModel)
     plt.show()
 
-def bootStrapData( dmModel='CDM', nBootStraps=10):
+def bootStrapData( dmModel='CDM', nBootStraps=100):
+    
     dataSelectionFunction = \
           '../output/%s/selectionFunction/SF_data.pkl' % dmModel
           
@@ -56,33 +57,26 @@ def bootStrapData( dmModel='CDM', nBootStraps=10):
           hubbleInterpolator(allDistributionsPklFile=dataSelectionFunction,\
                                  regressorNoiseLevel=1e-3, dmModel=dmModel)
 
-    hubbleInterpolaterClass.getTrainingData('%spickles/trainingDataForObsWithMass.pkl'\
+    hubbleInterpolaterClass.getTrainingData('%spickles/trainingData.pkl'\
                                                 % dmModel)
         
     hubbleInterpolaterClass.getTimeDelayModel()
-    allSamples  = None
-        
-    for iBootStrap in np.arange(nBootStraps):
-        print("%i/%i" % (iBootStrap+1, nBootStraps))
-        iParams = fitModelToDataBootStrap(hubbleInterpolaterClass)
 
-        if allSamples is None:
-            allSamples = iParams
-        else:
-            allSamples = np.vstack((allSamples, iParams))
 
-    return allSamples
+    samples = fitModelToDataBootStrap(hubbleInterpolaterClass)
+
+    return samples
             
 def fitModelToDataBootStrap( model ):
     
         
-    selectedTimeDelays = getObservations(monteCarlo=True)
+    selectedTimeDelays = getObservations()
 
     fitHubbleClass = \
           fitHubble.fitHubbleParameterClass( selectedTimeDelays, \
                                     model)
-
-    return fitHubbleClass.maxLikeParams
+            
+    return fitHubbleClass.samples
   
     
 
@@ -116,22 +110,43 @@ def plotMockedData(fig, nIterations=10):
 
 
     
-def getObservations(nBins=20, monteCarlo=False):
+def getObservations(nBins=20, nBootStraps=1000, monteCarlo=False, getError=True):
     data = np.loadtxt( '../data/oguriTimeDelays.txt',\
                            dtype=[('name',object), ('zs', float), \
                                     ('zl', float),\
                                       ('timeDelays', float), \
                                       ('timeDelayErr', float) ])
 
+    bins = np.linspace(-1,3,nBins+1)
+    
+    if getError:
+        
+        variance = np.zeros((nBootStraps, nBins))
+
+        for iBootStrap in range(nBootStraps):
+            iBootStrappedPDF = \
+              getObservations(nBins=nBins, monteCarlo=True, \
+                                  getError=False)
+            variance[ iBootStrap, :] = iBootStrappedPDF['y']
+            
+
+        median, lower, upper =  \
+          np.percentile( variance, [50, 16,84], axis=0)
+
+        cumsumYError =  median - lower, upper-median
+
+    
     if monteCarlo:
-        timeDelays = np.random.randn( len(data))*data['timeDelayErr']+data['timeDelays']
+        timeDelays = \
+          np.random.randn( len(data))*data['timeDelayErr']+\
+          data['timeDelays']
     else:
         timeDelays = data['timeDelays']
 
     logTimeDelays = np.log10(np.sort(timeDelays))
     nSamples = len(data)
     y, x = np.histogram(logTimeDelays, \
-        bins=np.linspace(-1,3,nBins+1), density=True)
+        bins=bins, density=True)
                     
     dX = (x[1] - x[0])
     xcentres = (x[1:] + x[:-1])/2.
@@ -139,24 +154,11 @@ def getObservations(nBins=20, monteCarlo=False):
     error = np.sqrt(y*nSamples)/nSamples
 
     cumsumY = np.cumsum( y )  / np.sum(y)
-    cumsumYError = np.ones(nBins)/nSamples/2. #np.sqrt(np.cumsum(error**2)/(np.arange(len(error))+1))
-
-
     
-    #y = np.cumsum(np.ones(len(data)))/len(data)
-   # error  = np.ones(len(data))/len(data)
-   # cumsumYError = np.sqrt(np.cumsum(error**2)/(np.arange(len(error))+1))
-
-    ind = data['zl'] > 0
-    dl = np.array([ lensing.ang_distance(i) for i in data['zl'][ind]])
-    dls = \
-        np.array([lensing.ang_distance(data['zs'][ind][i], \
-                                z0=data['zl'][ind][i])\
-               for i in range(len(data[ind]))])
-    ds = np.array([ lensing.ang_distance(i) for i in data['zs'][ind]])
-
-    return {'x':xcentres, 'y':cumsumY, 'error':cumsumYError}
-
+    if getError:
+        return {'x':xcentres, 'y':cumsumY, 'error':cumsumYError}
+    else:
+        return {'x':xcentres, 'y':cumsumY}
 def writeResultsToTex(nMonteCarlo=100):
 
 

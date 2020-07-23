@@ -5,7 +5,7 @@ def plotCornerPlot( sampleSize=1000):
 
     labels = \
         [r'$H_0/ (100 $km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',\
-            r'$\alpha$', r'$log(M(<5kpc)/M_\odot)$',\
+            r'$\alpha$', r'$log(M(<5kpc)/M_\odot)$',r'N_{\rm sub}', \
            r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$' ]
            
     ndim = 7
@@ -13,18 +13,17 @@ def plotCornerPlot( sampleSize=1000):
     figcorner, axarr = plt.subplots(ndim,ndim,figsize=(12,12))
     color = ['black','red','green','cyan']
     
-    for icolor, minTimeDelay in enumerate([0.]):
+    for icolor, iSampleSize in enumerate([100, 1000]):
         samples = \
-          getMCMCchainForSamplesSize(sampleSize, 100,  None, \
-                            minimumTimeDelay=minTimeDelay)
-        truths  = [0.7, 0.4,  11.05, 4, 0.3, 0.7, 0.]
-        pdb.set_trace()
+          getMCMCchainForSamplesSize(iSampleSize, 1,  None)
+        truths  = [0.7, 0.4,  -1.75, 11.05, 4, 0.3, 0.7, 0.]
+
         nsamples = samples.shape[0]
         #maxLikes = getMaxLikeFromSamples(samples)
         #nsamples = maxLikes.shape[0]
 
         corner.corner(samples , \
-                      bins=20, smooth=True, \
+                      bins=10, smooth=True, \
                       plot_datapoints=False,
                       fig=figcorner, \
                       labels=labels, plot_density=True, \

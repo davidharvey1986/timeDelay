@@ -34,10 +34,11 @@ def main():
 
     gs = None
 
-    inputPar = [0.7, 0.4, 1.75, 11.05, 4.0, 0.3, 0.7]
+    inputPar = [0.7, 0.4, -1.75, 11.05, 4.0, 0.3, 0.7]
     colors = ['red','blue']
 
-    lims = [(0.,6.), (0.,40.), (0., 8.), (0.,1.0), (0., 10.), (5.,11.5), (1.5,5.)]
+    lims = [(0.,6.), (0.,40.), (0., 8.), (0.,1.0),\
+                (0., 10.), (5.,11.5), (1.5,5.)]
     
     for iColor, minTime in enumerate([0.]):
         sampleSizes, estimates = \
@@ -100,7 +101,7 @@ def main():
 
 
 def getPredictedConstraints(nIterations = 1,\
-                                nSampleSizes = 4,\
+                                nSampleSizes = 7,\
                                 minimumTimeDelay=0.):
 
 
@@ -133,7 +134,7 @@ def getPredictedConstraints(nIterations = 1,\
 
         #for iPar in range(samples.shape[1]):
         #    median, error =  getModeAndError( samples[:,iPar])
-            
+        pdb.set_trace()
         estimates[:, 0, i] = np.std(samples, axis=0)
         estimates[:, 1, i] = np.std(samples, axis=0)*0.1
 
