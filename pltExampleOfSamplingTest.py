@@ -8,7 +8,7 @@ def plotCornerPlot( sampleSize=1000):
             r'$\alpha$', r'$log(M(<5kpc)/M_\odot)$',\
            r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$' ]
            
-    ndim = 5
+    ndim = 7
             
     figcorner, axarr = plt.subplots(ndim,ndim,figsize=(12,12))
     color = ['black','red','green','cyan']
@@ -17,14 +17,14 @@ def plotCornerPlot( sampleSize=1000):
         samples = \
           getMCMCchainForSamplesSize(sampleSize, 100,  None, \
                             minimumTimeDelay=minTimeDelay)
-        truths  = [0.7, 0.4,  11.05, 0.3, 0.7, 0.]
-        
+        truths  = [0.7, 0.4,  11.05, 4, 0.3, 0.7, 0.]
+        pdb.set_trace()
         nsamples = samples.shape[0]
         #maxLikes = getMaxLikeFromSamples(samples)
         #nsamples = maxLikes.shape[0]
 
         corner.corner(samples , \
-                      bins=40, smooth=True, \
+                      bins=20, smooth=True, \
                       plot_datapoints=False,
                       fig=figcorner, \
                       labels=labels, plot_density=True, \

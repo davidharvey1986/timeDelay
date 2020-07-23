@@ -123,6 +123,7 @@ class hubbleInterpolator:
               
             zLensStr = fileName.split('/')[-2]
             zLens = np.float(zLensStr.split('_')[1])
+            
             finalMergedPDFdict['y'] = \
               finalMergedPDFdict['y'][ finalMergedPDFdict['x'] > \
                                            self.logMinimumTimeDelay]

@@ -19,7 +19,7 @@ rcParams["font.size"] = 12
 from scipy.ndimage import gaussian_filter as gauss
 from matplotlib import gridspec
 import time
-
+import progressbar
     
     
 def main():
@@ -96,6 +96,7 @@ def main():
     plt.savefig('../plots/statisticalErrorOnHubble.pdf')
     plt.show()
 
+
 def getPredictedConstraints(nIterations = 100,\
                                 nSampleSizes = 16,\
                                 minimumTimeDelay=0.):
@@ -145,10 +146,10 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
     samples = None
     
     if minimumTimeDelay > 0:
-        pklFile = 'picklesMinimumDelay/maxLikeNSub_%i.pkl' \
+        pklFile = 'picklesMinimumDelay/bootstrapNSub_%i.pkl' \
           % (iSampleSize)
     else:
-        pklFile = 'exactPDFpickles/maxLikeNSub_%i.pkl' \
+        pklFile = 'exactPDFpickles/bootstrapNSub_%i.pkl' \
           % iSampleSize
     
 
@@ -179,7 +180,8 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
     return samples
 
 
-def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0.):
+def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0., \
+                                        getError=True):
     '''
     From a given pdf randomly select some time delays
 
@@ -204,7 +206,7 @@ def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0.):
                        'nSubstructure':4}
         
     interpolatedCumSum = \
-          realWorldInterpolator.predictCDF( interpolateToTheseTimes, inputParams )
+        realWorldInterpolator.predictCDF( interpolateToTheseTimes, inputParams )
           
     interpolatedProb = undoCumSum( interpolatedCumSum)
       
@@ -227,15 +229,51 @@ def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0.):
     dX = (x[1] - x[0])
     xcentres = (x[1:] + x[:-1])/2.
         
-    error = np.sqrt(y*nSamples)/nSamples
-
     cumsumY = np.cumsum( y )  / np.sum(y)
-    cumsumYError = np.sqrt(np.cumsum(error**2)/(np.arange(len(error))+1))
 
     xcentres += dX/2.
 
-    return {'x':xcentres, 'y':cumsumY,  'error':cumsumYError}
+    if getError:
+        cumsumYError = \
+          generateVarianceInCumSumSample( nSamples, nBootStraps=100)
+        trueY = realWorldInterpolator.predictCDF( xcentres, inputParams )
+        pdb.set_trace()
+        return {'x':xcentres, 'y':trueY,  'error':cumsumYError}
+    else:
+        return {'x':xcentres, 'y':cumsumY}
 
+
+def generateVarianceInCumSumSample( nObservations, nBootStraps=100):
+    '''
+    loop nBootStrap times and find the variance in each bin
+    '''
+
+    bar = progressbar.ProgressBar(maxval=nBootStraps, \
+            widgets=[progressbar.Bar('=', '[', ']'), ' ', \
+                         progressbar.Percentage()])
+    bar.start()
+
+    variance = None
+    for iBootStrap in range(nBootStraps):
+        bar.update(iBootStrap+1)
+        
+        iStrappePDF = \
+              selectRandomSampleOfTimeDelays( nObservations, getError=False)
+
+        cumsum =  np.cumsum(iStrappePDF['y'])/np.sum(iStrappePDF['y'])
+        if variance is None:
+            variance =cumsum
+        else:
+            variance = np.vstack((variance,cumsum))
+                
+    bar.finish()
+    median, lower, upper =  \
+      np.percentile( variance, [50, 16,84], axis=0)
+
+    return median - lower, upper-median
+
+
+    
 def getModeAndError( samples ):
 
     

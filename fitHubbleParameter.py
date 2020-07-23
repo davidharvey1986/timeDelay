@@ -41,9 +41,6 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     
     loss = np.sum((cumsumYtheory - yTrue)**2)*prior
 
-    
-
-
     return loss
     
 def priorOnParameters( thetaDict, hubbleInterpolator ):
