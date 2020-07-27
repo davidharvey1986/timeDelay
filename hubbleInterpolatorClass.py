@@ -92,7 +92,7 @@ class hubbleInterpolator:
         
         featureDtype = \
           [( ('zLens',float) ), ('densityProfile', float), \
-           ('totalMass', float), ('nSubstructure', float) ]
+           ('totalMass', float)]
 
         features = np.array([], dtype=featureDtype)
         self.nFeatures = len(features.dtype)
@@ -118,8 +118,6 @@ class hubbleInterpolator:
                (totalMassForHalo > self.massCut[1]):
                continue
 
-            nSubstructure = \
-              substructure( fileName, minLogMass=minLogMass)
               
             zLensStr = fileName.split('/')[-2]
             zLens = np.float(zLensStr.split('_')[1])
@@ -147,7 +145,7 @@ class hubbleInterpolator:
               getDensity.getDensityProfileIndex(fileName)[0]
 
             allPars = \
-              [ zLens, densityProfile, totalMassForHalo,nSubstructure]
+              [ zLens, densityProfile, totalMassForHalo ]
 
             iFeature = np.array(allPars, dtype=features.dtype)
 
@@ -338,7 +336,7 @@ class hubbleInterpolator:
         #parse the input parameters
         
 
-        inputFeatureNames = ['zLens','densityProfile','totalMass','nSubstructure']
+        inputFeatureNames = ['zLens','densityProfile','totalMass']
         
         inputFeatures = \
           np.array([ inputFeatureDict[i] for i in inputFeatureNames ])

@@ -87,7 +87,7 @@ def main():
             ax.set_xscale('log')
             #ax.legend()
             ax.set_ylim(lims[iPar])
-            ax.set_xlim(50, 4.5e3)
+            ax.set_xlim(10, 4.5e3)
             if iPar != estimates.shape[0] -1:
                 ax.set_xticklabels([])
             ax.set_xlabel('nSamples')
@@ -134,7 +134,7 @@ def getPredictedConstraints(nIterations = 1,\
 
         #for iPar in range(samples.shape[1]):
         #    median, error =  getModeAndError( samples[:,iPar])
-        pdb.set_trace()
+
         estimates[:, 0, i] = np.std(samples, axis=0)
         estimates[:, 1, i] = np.std(samples, axis=0)*0.1
 
@@ -149,10 +149,10 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
     samples = None
     
     if minimumTimeDelay > 0:
-        pklFile = 'picklesMinimumDelay/bootstrapNSub_%i.pkl' \
+        pklFile = 'picklesMinimumDelay/bootstrap_%i.pkl' \
           % (iSampleSize)
     else:
-        pklFile = 'exactPDFpickles/bootstrapNSub_%i.pkl' \
+        pklFile = 'exactPDFpickles/bootstrap_%i.pkl' \
           % iSampleSize
     
 
@@ -184,7 +184,7 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
 
 
 def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0., \
-                                        getError=True):
+                                        nBootStraps=10000):
     '''
     From a given pdf randomly select some time delays
 
@@ -205,8 +205,7 @@ def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0., \
     interpolateToTheseTimes= np.linspace(-3, 3, np.int(1e6))
       
     inputParams = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., 'OmegaL':0.7, \
-        'zLens':0.40, 'densityProfile':-1.75, 'totalMass':11.1, \
-                       'nSubstructure':4}
+        'zLens':0.40, 'densityProfile':-1.75, 'totalMass':11.1}
         
     interpolatedCumSum = \
         realWorldInterpolator.predictCDF( interpolateToTheseTimes, inputParams )
@@ -217,62 +216,39 @@ def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0., \
     interpolatedProb /= np.sum(interpolatedProb)
 
     #Interpolate the p
+    size = [np.int(nSamples), nBootStraps]
     
+    logTimeDelays = np.random.choice(interpolateToTheseTimes, \
+        p=interpolatedProb, size=size)
 
-    logTimeDelays = \
-      np.random.choice(interpolateToTheseTimes, \
-                    p=interpolatedProb, size=np.int(nSamples))
-
-    logTimeDelays = logTimeDelays[ logTimeDelays > logMinimumTimeDelay ]
+    nBins = np.max([20, np.int(nSamples/10)])
+    variance = np.zeros((np.int(nBins), nBootStraps))
     
-    bins = np.linspace(-1,4,1000)
+    for iHist in range(nBootStraps):
+        iLogTimeDelays = \
+          logTimeDelays[ logTimeDelays[:, iHist] > logMinimumTimeDelay, iHist ]
     
-    y, x = np.histogram(logTimeDelays, bins=bins, density=True)
+        bins = np.linspace(-1,4,nBins+1)
+    
+        y, x = np.histogram(iLogTimeDelays, bins=bins, density=True)
 
-    dX = (x[1] - x[0])
+        dX = (x[1] - x[0])
+        cumsumY = np.cumsum( y )  / np.sum(y)
+        variance[:, iHist] = cumsumY
+        
     xcentres = (x[1:] + x[:-1])/2.
-        
-    cumsumY = np.cumsum( y )  / np.sum(y)
-
+      
     xcentres += dX/2.
+    mean = np.mean(variance, axis=1) 
+    median, lo, hi = \
+        np.percentile( variance, [50, 16, 84], axis=1)
 
-    if getError:
-        cumsumYError = \
-          generateVarianceInCumSumSample( nSamples, nBootStraps=100)
-        trueY = realWorldInterpolator.predictCDF( xcentres, inputParams )
-        return {'x':xcentres, 'y':trueY,  'error':cumsumYError}
-    else:
-        return {'x':xcentres, 'y':cumsumY}
+    cumsumYError = np.array([median-lo, hi-median])
+    cumsumYError = np.std(variance,axis=1) 
+    trueY = realWorldInterpolator.predictCDF( xcentres, inputParams )
 
-
-def generateVarianceInCumSumSample( nObservations, nBootStraps=100):
-    '''
-    loop nBootStrap times and find the variance in each bin
-    '''
-
-    bar = progressbar.ProgressBar(maxval=nBootStraps, \
-            widgets=[progressbar.Bar('=', '[', ']'), ' ', \
-                         progressbar.Percentage()])
-    bar.start()
-
-    variance = None
-    for iBootStrap in range(nBootStraps):
-        bar.update(iBootStrap+1)
-        
-        iStrappePDF = \
-          selectRandomSampleOfTimeDelays( nObservations, getError=False)
-
-        cumsum =  np.cumsum(iStrappePDF['y'])/np.sum(iStrappePDF['y'])
-        if variance is None:
-            variance =cumsum
-        else:
-            variance = np.vstack((variance,cumsum))
-                
-    bar.finish()
-    median, lower, upper =  \
-      np.percentile( variance, [50, 16,84], axis=0)
-
-    return median - lower, upper-median
+    return {'x':xcentres, 'y':trueY,  'error':cumsumYError}
+    
 
 
     

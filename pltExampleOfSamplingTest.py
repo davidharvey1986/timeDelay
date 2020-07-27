@@ -8,12 +8,12 @@ def plotCornerPlot( sampleSize=1000):
             r'$\alpha$', r'$log(M(<5kpc)/M_\odot)$',r'N_{\rm sub}', \
            r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$' ]
            
-    ndim = 7
+    ndim = 6
             
     figcorner, axarr = plt.subplots(ndim,ndim,figsize=(12,12))
     color = ['black','red','green','cyan']
     
-    for icolor, iSampleSize in enumerate([100, 1000]):
+    for icolor, iSampleSize in enumerate([10, 1000]):
         samples = \
           getMCMCchainForSamplesSize(iSampleSize, 1,  None)
         truths  = [0.7, 0.4,  -1.75, 11.05, 4, 0.3, 0.7, 0.]

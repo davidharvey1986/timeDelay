@@ -23,7 +23,7 @@ def main( dmModel='CDM', nBootStraps=1000 ):
   
     
     pklFile = 'pickles/%s_bootStrapped.pkl' % dmModel
-    if os.path.isfile( pklFile ):
+    if not os.path.isfile( pklFile ):
         allSamples = pkl.load(open(pklFile,'rb'))
     else:
         allSamples = bootStrapData( dmModel='CDM', nBootStraps=nBootStraps )
@@ -48,7 +48,7 @@ def main( dmModel='CDM', nBootStraps=1000 ):
     figcorner.savefig('../plots/%s_LCDMresults.pdf' % dmModel)
     plt.show()
 
-def bootStrapData( dmModel='CDM', nBootStraps=100):
+def bootStrapData( dmModel='CDM', nBootStraps=1000):
     
     dataSelectionFunction = \
           '../output/%s/selectionFunction/SF_data.pkl' % dmModel
@@ -110,7 +110,7 @@ def plotMockedData(fig, nIterations=10):
 
 
     
-def getObservations(nBins=20, nBootStraps=1000, monteCarlo=False, getError=True):
+def getObservations(nBins=20, nBootStraps=10000, monteCarlo=False, getError=True):
     data = np.loadtxt( '../data/oguriTimeDelays.txt',\
                            dtype=[('name',object), ('zs', float), \
                                     ('zl', float),\
@@ -130,10 +130,7 @@ def getObservations(nBins=20, nBootStraps=1000, monteCarlo=False, getError=True)
             variance[ iBootStrap, :] = iBootStrappedPDF['y']
             
 
-        median, lower, upper =  \
-          np.percentile( variance, [50, 16,84], axis=0)
-
-        cumsumYError =  median - lower, upper-median
+        cumsumYError =  np.std(variance, axis=0)
 
     
     if monteCarlo:
@@ -151,14 +148,13 @@ def getObservations(nBins=20, nBootStraps=1000, monteCarlo=False, getError=True)
     dX = (x[1] - x[0])
     xcentres = (x[1:] + x[:-1])/2.
         
-    error = np.sqrt(y*nSamples)/nSamples
-
     cumsumY = np.cumsum( y )  / np.sum(y)
     
     if getError:
         return {'x':xcentres, 'y':cumsumY, 'error':cumsumYError}
     else:
         return {'x':xcentres, 'y':cumsumY}
+    
 def writeResultsToTex(nMonteCarlo=100):
 
 

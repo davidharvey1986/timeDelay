@@ -27,9 +27,8 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
        'zLens':theta[1], \
        'densityProfile':theta[2], \
         'totalMass':theta[3], \
-                'nSubstructure':theta[4], \
-        'OmegaM':theta[5], \
-        'OmegaL':theta[6], \
+        'OmegaM':theta[4], \
+        'OmegaL':theta[5], \
          'OmegaK':0.}
 
     cumsumYtheory = \
@@ -39,10 +38,20 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     prior = priorOnParameters( thetaDict, hubbleInterpolator )
     
     #prob = 1./np.sum((cumsumYtheory - yTrue)**2)
-    error = np.mean(error, axis=0)
-    #error[ error == 0] = np.min(error[error!=0])
 
-    prob = np.nansum(norm.logpdf( cumsumYtheory, yTrue, scale=error))
+    error[ error < 1e-4] = 1e-4
+
+    #upper = cumsumYtheory > yTrue
+    #probUpper = norm.logpdf( cumsumYtheory[upper], \
+    #                yTrue[upper], scale=error[1][upper])
+
+    #lower = cumsumYtheory <= yTrue
+    #probLower = norm.logpdf( cumsumYtheory[lower], \
+    #                yTrue[lower], scale=error[1][lower])
+
+    #prob = np.sum(probUpper) + np.sum(probLower)
+    prob = np.sum(norm.pdf(cumsumYtheory, yTrue, error))
+
 
     if np.isnan(prob):
         pdb.set_trace()
@@ -121,9 +130,8 @@ class fitHubbleParameterClass:
         pos0[:,1] =  np.random.uniform( 0.2, 0.74, nwalkers)
         pos0[:,2] =  np.random.uniform( -1.6,-2., nwalkers)
         pos0[:,3] =  np.random.uniform( 10.9, 11.3, nwalkers)
-        pos0[:,4] =  np.random.uniform( 0, 4.0, nwalkers)
-        pos0[:,5] =  np.random.uniform( 0.25, 0.35, nwalkers)
-        pos0[:,6] =  np.random.uniform( 0.65, 0.75, nwalkers)
+        pos0[:,4] =  np.random.uniform( 0.25, 0.35, nwalkers)
+        pos0[:,5] =  np.random.uniform( 0.65, 0.75, nwalkers)
         
         
 
