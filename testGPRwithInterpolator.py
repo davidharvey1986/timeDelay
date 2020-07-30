@@ -29,7 +29,7 @@ def main():
     principalComponentList = np.linspace(3, 9, 7)
     nSamples = 10000
     for iPrincipalComponent in principalComponentList:
-        pklFile = 'pickles/hubbleInterpolatorTest_%i.pkl' % iPrincipalComponent
+        pklFile = 'pickles/newHubbleInterpolatorTest_%i.pkl' % iPrincipalComponent
         
         if os.path.isfile( pklFile):
             diffArrays = pkl.load(open(pklFile, 'rb'))
@@ -174,12 +174,12 @@ def getDiffArraysForNumPrincpalComponents( nComponents, nSamples=100 ):
 def getBestParsForGPR():
   
     hubbleInterpolator = \
-      hubbleModel.hubbleInterpolator( preprocess=True)
+      hubbleModel.hubbleInterpolator( )
       
-    hubbleInterpolator.getTrainingData('exactPDFpickles/noCosmology.pkl')
+    hubbleInterpolator.getTrainingData('pickles/trainingDataWithMass.pkl')
 
-    hubbleInterpolator.getTimeDelayModel(modelFile='pickles/noCosmology.pkl')
-    hubbleInterpolator.learnPrincipalComponents()
+    hubbleInterpolator.getTimeDelayModel()
+
     defaultLog = hubbleInterpolator.getGaussProcessLogLike()
 
  
@@ -196,18 +196,36 @@ def getBestParsForGPR():
             for noise in noise_level:
                 for alpha in alphaList:
     '''
-    maternWeightList = 10**np.linspace(-1,3,10)
-    whiteKernelList = 10**np.linspace(-1,3,10)
-    logLike = np.zeros([10,10])
+
+    nLength=10
+    nWhite = 100
+    maternWeightList = [1.5] #10**np.linspace(-1,3,nLength)
+    whiteKernelList = 10**np.linspace(-5,0,nWhite)
+
+    logLike = np.zeros([nLength,nWhite])
     for i, maternWeight in enumerate(maternWeightList):
         for j, whiteKernel in enumerate(whiteKernelList):
-            hubbleInterpolator.learnPrincipalComponents( maternWeight=maternWeight, whiteKernelWeight= whiteKernel)
+            hubbleInterpolator.regressorNoiseLevel= whiteKernel
+            hubbleInterpolator.learnPrincipalComponents( length_scale=maternWeight)
             logLike[ i, j] = hubbleInterpolator.getGaussProcessLogLike()
-            if logLike[ i, j] > defaultLog:
-                print(maternWeight,whiteKernel, logLike[ i, j] - defaultLog)
-                pdb.set_trace()
-    plt.imshow(logLike)
-            
+            #if logLike[ i, j] > defaultLog:
+            #    print(maternWeight,whiteKernel, logLike[ i, j] - defaultLog)
+
+            #pdb.set_trace()
+    #plt.imshow(logLike, extent=[-5, 0, -1, 3], origin='lower')
+
+    plt.figure(figsize=(8,6))
+    gs =  gridspec.GridSpec(2,1)
+    ax = plt.subplot(gs[0,0])
+    ax.set_xlabel(r'log(Noise Level)')
+    ax.set_ylabel(r'log likelihood')
+    #plt.ylabel(r'log(Matern Length Scale)')
+    print(whiteKernelList[np.argmax(logLike[0,:])])
+    ax.plot(whiteKernelList, logLike[0,:], '-')
+    ax.set_xscale('log')
+    
+    plt.savefig('../plots/GPRparams.pdf')
+    plt.show()
                     
     
     pdb.set_trace()
@@ -251,3 +269,4 @@ def plotAllDefaultCosmologies():
 if __name__ == '__main__':
     main()
     #plotAllDefaultCosmologies()
+    #getBestParsForGPR()

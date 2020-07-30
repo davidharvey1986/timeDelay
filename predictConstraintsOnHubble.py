@@ -39,7 +39,7 @@ def main():
 
     lims = [(0.,6.), (0.,40.), (0., 8.), (0.,1.0), (5.,11.5), (1.5,5.)]
     
-    for iColor, minTime in enumerate([0., 10.]):
+    for iColor, minTime in enumerate([10.]):
         sampleSizes, estimates = \
             getPredictedConstraints(minimumTimeDelay=minTime)
 
@@ -112,13 +112,13 @@ def getPredictedConstraints(nIterations = 100,\
 
     hubbleInterpolaterClass.getTimeDelayModel()
   
-    sampleSizes = 10**np.linspace(1,4,nSampleSizes)
+    sampleSizes = 10**np.linspace(1,4,nSampleSizes)[4:-1]
     
     estimates = None 
 
 
     #Loop through each sample size
-    for i, iSampleSize in enumerate(sampleSizes[:-1]):
+    for i, iSampleSize in enumerate(sampleSizes):
         print("Sample Size: %i" % (iSampleSize))
 
         samples = \
@@ -127,7 +127,7 @@ def getPredictedConstraints(nIterations = 100,\
                                          minimumTimeDelay=minimumTimeDelay)
 
         if estimates is None:
-            estimates = np.zeros((samples.shape[1], 2, nSampleSizes))
+            estimates = np.zeros((samples.shape[1], 2, len(sampleSizes)))
 
         for iPar in range(samples.shape[1]):
             median, error =  getModeAndError( samples[:,iPar])
@@ -152,6 +152,7 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
         pklFile = 'exactPDFpickles/multiFitSamples_withMass_%i.pkl' \
           % iSampleSize
     
+    
 
     if os.path.isfile(pklFile):
         return pkl.load(open(pklFile, 'rb'))
@@ -166,9 +167,6 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
               fitHubble.fitHubbleParameterClass( selectedTimeDelays, \
                                     hubbleInterpolaterClass)
 
-        y, x = np.histogram(fitHubbleClass.samples[:,0])
-        xc = (x[1:] + x[:-1])/2.
-            
         if samples is None:
             samples = fitHubbleClass.samples
         else:
@@ -177,7 +175,7 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
 
 
     pkl.dump(samples, open(pklFile, 'wb'))
-        
+
     return samples
 
 
@@ -191,16 +189,15 @@ def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0.):
     dataSelectionFunction = '../output/CDM/selectionFunction/SF_data.pkl'
           
     realWorldInterpolator = \
-          hubbleModel.hubbleInterpolator(allDistributionsPklFile=dataSelectionFunction,\
-                                 regressorNoiseLevel=1e-3)
+          hubbleModel.hubbleInterpolator()
 
     
     #realWorldInterpolator = \
     #  hubbleModel.hubbleInterpolator( )
     
-    #realWorldInterpolator.getTrainingData('pickles/trainingDataWithMass.pkl')
+    realWorldInterpolator.getTrainingData('pickles/trainingDataWithMass.pkl')
     
-    realWorldInterpolator.getTrainingData('pickles/trainingDataWithMassForDataTrainingSet.pkl')
+    #realWorldInterpolator.getTrainingData('pickles/trainingDataWithMassForDataTrainingSet.pkl')
     realWorldInterpolator.getTimeDelayModel()
 
     if minimumTimeDelay == 0:
@@ -211,7 +208,7 @@ def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0.):
     interpolateToTheseTimes= np.linspace(-3, 3, 1e6)
       
     inputParams = {'H0':0.7, 'OmegaM':0.3, 'OmegaK':0., 'OmegaL':0.7, \
-        'zLens':0.40, 'densityProfile':-1.75, 'totalMass':11.1}
+        'zLens':0.40, 'densityProfile':-1.75, 'totalMass':11.05}
         
     interpolatedCumSum = \
           realWorldInterpolator.predictCDF( interpolateToTheseTimes, inputParams )

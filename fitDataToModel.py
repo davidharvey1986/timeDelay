@@ -26,7 +26,8 @@ def monteCarlo( nMonteCarlo=100 ):
            r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$' ]
            
     for iMonteCarlo in np.arange(nMonteCarlo):
-        pklFile = '%i_monteCarlo_withMass_LCDM.pkl' % iMonteCarlo
+        print("%i/%i" % (iMonteCarlo, nMonteCarlo))
+        pklFile = '%i_monteCarlo_withMass_LCDMk.pkl' % iMonteCarlo
 
         samples = main(pklFile=pklFile, monteCarlo=True)
 
@@ -39,7 +40,7 @@ def monteCarlo( nMonteCarlo=100 ):
         xc = (x[1:] + x[:-1])/2.
         
         maxLike.append(xc[np.argmax(y)])
-        
+
     nsamples = allSamples.shape[0]
     #plotMockedData( figcorner)
     ndim = allSamples.shape[1]
@@ -49,7 +50,7 @@ def monteCarlo( nMonteCarlo=100 ):
                     plot_datapoints=False, labels=labels, fig=figcorner,\
                       weights=np.ones(nsamples)/nsamples, color='black', \
                       hist_kwargs={'linewidth':3.},\
-                      contour_kwargs={'linewidths':3.}, smooth=True)
+                      contour_kwargs={'linewidths':3.})
                       
     for i in range(samples.shape[1]):
         lo, med, hi = np.percentile(allSamples[:,i],[16,50,84])
@@ -69,8 +70,7 @@ def main(pklFile='fitDataToModel_withMass_LCDMk_noZ0.6.pkl', \
         dataSelectionFunction = '../output/CDM/selectionFunction/SF_data.pkl'
           
         hubbleInterpolaterClass = \
-          hubbleInterpolator(allDistributionsPklFile=dataSelectionFunction,\
-                                 regressorNoiseLevel=1e-3)
+          hubbleInterpolator(allDistributionsPklFile=dataSelectionFunction)
 
         hubbleInterpolaterClass.getTrainingData('pickles/trainingDataForObsWithMass.pkl')
         

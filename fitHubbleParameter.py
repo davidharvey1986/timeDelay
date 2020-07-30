@@ -115,7 +115,7 @@ class fitHubbleParameterClass:
         pos0[:,0] = np.random.uniform( 0.6, 0.8, nwalkers) 
         pos0[:,1] =  np.random.uniform( 0.2, 0.74, nwalkers)
         pos0[:,2] =  np.random.uniform( -1.6,-2., nwalkers)
-        pos0[:,3] =  np.random.uniform( 10.9, 11.3, nwalkers)
+        pos0[:,3] =  np.random.uniform( 10.9, 11.2, nwalkers)
         pos0[:,4] =  np.random.uniform( 0.25, 0.35, nwalkers)
         pos0[:,5] =  np.random.uniform( 0.65, 0.75, nwalkers)
         #pos0[:,6] =  np.random.uniform( -0.02, 0.02, nwalkers)
