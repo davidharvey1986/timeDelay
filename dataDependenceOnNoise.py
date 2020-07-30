@@ -50,10 +50,11 @@ def main( nMonteCarlo=20, nNoise=8 ):
 
     gs = gridspec.GridSpec(2,1)
     ax = plt.subplot(gs[0,0])
-    ax.errorbar( noiseLevel, HubbleEstimate[:,0]/0.7, \
-                      yerr=HubbleEstimate[:,1:].T/0.7, fmt='o', capsize=2)
-    ax.set_xlabel('Kernel Noise Level')
-    ax.set_ylabel(r'$H_0/70$ km/s/Mpc')
+    reference = HubbleEstimate[np.argmin(np.abs(noiseLevel-4e-3)),0]
+    ax.errorbar( noiseLevel, HubbleEstimate[:,0]/reference, \
+                      yerr=HubbleEstimate[:,1:].T/reference, fmt='o', capsize=2)
+    ax.set_xlabel(r'Kernel Noise Level, $\alpha_{\rm N}$')
+    ax.set_ylabel(r'$H_0/H_{0, fid}$')
     
     ax.set_xscale('log')
     plt.savefig('../plots/dependenceOnNoise.pdf')

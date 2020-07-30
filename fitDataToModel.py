@@ -14,7 +14,7 @@ import lensing_parameters as lensing
 from matplotlib import colors as mcolors
 
 
-def monteCarlo( nMonteCarlo=100 ):
+def monteCarlo( nMonteCarlo=100, run='LCDM' ):
 
     params = np.array([])
 
@@ -25,24 +25,16 @@ def monteCarlo( nMonteCarlo=100 ):
             r'$\alpha$', r'$log(M(<5kpc)/M_\odot)$',\
            r'$\Omega_M$',r'$\Omega_\Lambda$',r'$\Omega_K$' ]
            
-    for iMonteCarlo in np.arange(nMonteCarlo):
-        print("%i/%i" % (iMonteCarlo, nMonteCarlo))
-        pklFile = '%i_monteCarlo_withMass_LCDMk.pkl' % iMonteCarlo
+    allSamples = getMCMCchain( run, nMonteCarlo=nMonteCarlo)
 
-        samples = main(pklFile=pklFile, monteCarlo=True)
-
-        if allSamples is None:
-            allSamples = samples
-        else:
-            allSamples = np.vstack((allSamples, samples))
-            
-        y, x = np.histogram(samples[:,0], bins=100)
-        xc = (x[1:] + x[:-1])/2.
+    if run == 'LCDM':
+        figName = '../plots/LCDMresults.pdf'
+    elif run == 'LCDMk':
+        figName = '../plots/LCDMkresults.pdf'
+    elif run == 'fixedCosmology':
+        figName = '../plots/fixedCosmoResults.pdf'
         
-        maxLike.append(xc[np.argmax(y)])
-
     nsamples = allSamples.shape[0]
-    #plotMockedData( figcorner)
     ndim = allSamples.shape[1]
     figcorner, axarr = plt.subplots(ndim,ndim,figsize=(12,12))
 
@@ -50,14 +42,15 @@ def monteCarlo( nMonteCarlo=100 ):
                     plot_datapoints=False, labels=labels, fig=figcorner,\
                       weights=np.ones(nsamples)/nsamples, color='black', \
                       hist_kwargs={'linewidth':3.},\
-                      contour_kwargs={'linewidths':3.})
+                      contour_kwargs={'linewidths':3.},
+                      smooth1d=1, smooth=1)
                       
-    for i in range(samples.shape[1]):
+    for i in range(ndim):
         lo, med, hi = np.percentile(allSamples[:,i],[16,50,84])
         print( med, med-lo, hi-med)
 
 
-    figcorner.savefig('../plots/LCDMresults.pdf')
+    figcorner.savefig(figName)
     plt.show()
         
 def main(pklFile='fitDataToModel_withMass_LCDMk_noZ0.6.pkl', \
@@ -106,23 +99,7 @@ def main(pklFile='fitDataToModel_withMass_LCDMk_noZ0.6.pkl', \
                       weights=np.ones(nsamples)/nsamples, color='black', \
                       hist_kwargs={'linewidth':3.},\
                       contour_kwargs={'linewidths':3.}, smooth=True)
-    '''
-    axarr[1,1].set_xlim( 0.3, 1.0)
-    axarr[2,2].set_xlim( -2, -1.5)
-    axarr[1,0].set_ylim( 0.3, 1.0)
-    axarr[2,0].set_ylim(  -2, -1.5)
-    axarr[2,1].set_ylim(  -2, -1.5)
-    axarr[2,1].set_xlim( 0.3, 1.0)
-    axarr[0,0].set_xlim( 0.6, 0.8)
-    axarr[1,0].set_xlim( 0.6, 0.8)
-    axarr[2,0].set_xlim( 0.6, 0.8)
-    axarr[0,0].set_xlim(0.6, 0.8)
-    axarr[1,1].set_xlim(0.3, 1.0)
-    axarr[2,2].set_xlim(-2, -1.5)
-    axarr[0,0].set_ylim(0., 0.1)
-    axarr[1,1].set_ylim(0., 0.3)
-    axarr[2,2].set_ylim(0., 0.3)
-    '''
+ 
     for i in range(samples.shape[1]):
         lo, med, hi = np.percentile(samples[:,i],[16,50,84])
         print( med, med-lo, hi-med)
@@ -212,7 +189,7 @@ def writeResultsToTex(nMonteCarlo=100):
 
 
     models = ['Fixed', '$\Lambda$CDM', '$\Lambda$CDMk']
-    pklEndings = ['', '_LCDM','_LCDMk']
+    pklEndings = ['fixedCosmology', 'LCDM','LCDMk']
 
     labels = \
         ['Model', r'$H_0/($km s$^{-1}$Mpc$^{-1}$)',r'$z_{lens}$',r'$\alpha$', r'log$(M(<5$kpc$)/M_\odot)$',\
@@ -228,19 +205,11 @@ def writeResultsToTex(nMonteCarlo=100):
     resultsFile.write('\hline\n')
     
     for iModel in np.arange(len(models)):
-        allSamples = None
+        
+        allSamples = getMCMCchain( pklEndings[iModel])
 
         line = models[iModel]
-        for iMonteCarlo in np.arange(nMonteCarlo):
-            pklFile = '%i_monteCarlo_withMass%s.pkl' \
-              % (iMonteCarlo,pklEndings[iModel])
-
-            samples = main(pklFile=pklFile, monteCarlo=True)
-
-            if allSamples is None:
-                allSamples = samples
-            else:
-                allSamples = np.vstack((allSamples, samples))
+  
 
         for i in range(allSamples.shape[1]):
             
@@ -261,10 +230,37 @@ def writeResultsToTex(nMonteCarlo=100):
     resultsFile.write('\\end{table*}\n')
 
     resultsFile.close()
+
+def getMCMCchain( run, nMonteCarlo=100 ):
+
+    allSamples = None
+    for iMonteCarlo in np.arange(nMonteCarlo):
+        print("%i/%i" % (iMonteCarlo, nMonteCarlo))
+        if run == 'fixedCosmology':
+            pklFile = '%i_monteCarlo_withMass.pkl' % iMonteCarlo
+        else:
+            pklFile = '%i_monteCarlo_withMass_LCDMk.pkl' % iMonteCarlo
+
+        samples = main(pklFile=pklFile, monteCarlo=True)
+
+        if allSamples is None:
+            allSamples = samples
+        else:
+            allSamples = np.vstack((allSamples, samples))
+            
+
+    if run == 'LCDM':
+        indexes = np.abs(allSamples[:, -1]) < 0.001
+        allSamples = allSamples[indexes, :-1]
+
+    return allSamples
+                
 if __name__ == '__main__':
     #writeResultsToTex()
     #main()
-    monteCarlo()
-    
+    #monteCarlo(run='fixedCosmology')
+    monteCarlo(run='LCDM')
+    #monteCarlo(run='LCDMk')
+
     
     

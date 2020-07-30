@@ -5,6 +5,7 @@ import numpy as np
 import ipdb as pdb
 from fitDataToModel import main as fitDataToModel
 from fitDataToModel import getObservations
+from fitDataToModel import getMCMCchain
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
 import hubbleInterpolatorClass as hubbleModel
@@ -24,7 +25,7 @@ def main():
 
     
     timeDelays = data['timeDelays']
-    allSamples = getZlensSamples()
+    allSamples = getMCMCchain('LCDM')
 
     fig = plt.figure(figsize=(8,6))
     gs = gridspec.GridSpec(9,1)
@@ -84,23 +85,7 @@ def getEstmatedMass( zLens, zSource, rsep=1.5 ):
     
     return ratioMass
     
-def getZlensSamples():
     
-    allSamples = None
-    nMonteCarlo = 100
-    for iMonteCarlo in np.arange(nMonteCarlo):
-        
-        pklFile = '%i_monteCarlo_withMass_LCDM.pkl' % iMonteCarlo
-
-        samples = fitDataToModel(pklFile=pklFile, monteCarlo=True)
-
-        if allSamples is None:
-            allSamples = samples
-        else:
-            allSamples = np.vstack((allSamples, samples))
-
-    
-    return allSamples
 
 def plotHistogram( samples, axis, color='red', label=None, weight=None,\
                 bins=10, **kwargs ):

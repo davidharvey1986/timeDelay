@@ -45,7 +45,7 @@ def medianTimeFunctionSubstructure():
         maxTimeAv.append(np.mean(maxTime[i==nHalos]))
         maxTimeAvErr.append(np.std(maxTime[i==nHalos])/np.sqrt(len(maxTime[i==nHalos])))
         
-    plt.errorbar( np.unique(np.array(nHalos))-1, medTimeAv, yerr=medTimeAvErr, fmt='o', color='black', label=r'$\log(\Delta t)_{\rm med}$', capsize=2.)
+    plt.errorbar( np.unique(np.array(nHalos))-1, medTimeAv, yerr=medTimeAvErr, fmt='o', color='black', label=r'$\log(\Delta t)_{\rm med}$', capsize=3.)
     plt.errorbar( np.unique(np.array(nHalos))-1, maxTimeAv, yerr=maxTimeAvErr, fmt='o', color='red', label=r'$\log(\Delta t)_{\rm max}$', capsize=2.)
     plt.legend()
 
