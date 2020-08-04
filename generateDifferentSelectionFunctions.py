@@ -1,4 +1,4 @@
-#!/usr/local/bin/python3
+#!/usr/local/bin/python3.7
 
 '''
 Can i predict what would happen if you got the wrong selection function?
@@ -34,7 +34,34 @@ def selectionFunctionEnsembleHalos():
               selectionFunction(allFiles, useLsst = True)
                                 
             pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
+            
+def selectionFunctionDifferentHubbles():
+    dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
+             
+    
+    hubbleParameters = \
+      np.array([50., 60., 70., 80., 90., 100.])
+    #hubbleParameter = 70.
+    
+    halos = ['B002','B005','B008','B009']
+    
+    allFiles = glob.glob(dirD+'/CDM/z*/*_cluster_0_*.json')
+        
+    for hubbleParameter in hubbleParameters:
+        
   
+            
+        pklFileName = \
+              '../output/CDM/selectionFunction/SF_%i_lsst.pkl' % \
+              (hubbleParameter)
+
+        
+        finalMergedPDFdict = \
+              selectionFunction(allFiles, useLsst = 21, \
+                            cosmology={'H0':hubbleParameter})
+                                
+        pkl.dump(finalMergedPDFdict,open(pklFileName,'wb'), 2)
+   
 def selectionFunctionIndividualLenses(  ):
     dirD = '/Users/DavidHarvey/Documents/Work/TimeDelay/output/'
              
@@ -250,4 +277,5 @@ if __name__ == "__main__":
     #selectionFunctionIndividualLensesForData()
     #selectionFunctionIndividualLensesForData()
     #selectFunctionForAllLenses()
-    selectionFunctionEnsembleHalos()
+    #selectionFunctionEnsembleHalos()
+    selectionFunctionDifferentHubbles()

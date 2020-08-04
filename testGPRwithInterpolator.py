@@ -47,7 +47,7 @@ def main():
         variance =  np.sqrt(np.mean(diffArrays['diffPredict']**2, axis=0))
         axAb.plot(diffArrays['x'], variance)
         
-    axAa.legend(ncol=3, prop={'size': 10}, title='# Princpal Comp', fontsize=6)
+    axAa.legend(ncol=3, prop={'size': 10}, title='# Principal Comp', fontsize=6)
     
     axAb.set_xlabel(r'$log(\Delta t$ /days)')
     #axBb.set_xlabel(r'$log(\Delta t$ /days)')

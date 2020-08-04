@@ -61,13 +61,15 @@ def main( withData=True):
             raise ValueError("No pickle file found (%s) "%pklFileName)
 
         for i in finalMergedPDFdict.keys():
+            if 'cosmolog' in i:
+                continue
             if 'y' in i:
                 finalMergedPDFdict[i] =  1. - np.cumsum(finalMergedPDFdict[i])/np.sum(finalMergedPDFdict[i])
 
 
      
         plotPDF( finalMergedPDFdict, colors[iColor], \
-            r"H0=%i kms/Mpc" % iHubbleParameter, axisA, \
+            r"H0=%i km/s/Mpc" % iHubbleParameter, axisA, \
                     yType='y', nofill=False )
 
         if withData:
