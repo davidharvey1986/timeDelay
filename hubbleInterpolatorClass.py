@@ -29,7 +29,7 @@ class hubbleInterpolator:
 
     def __init__( self, nPrincipalComponents=6, minimumTimeDelay=0.001,\
                       allDistributionsPklFile=None, massCut=[0., 16], \
-                      regressorNoiseLevel=1e-2, dmModel='CDM'):
+                      regressorNoiseLevel=4e-3, dmModel='CDM'):
         '''
         inputTrainFeatures: a list of the cosmology keys to train over
         minimmumTimeDelay: should we expect a minimum possibly observed time delay 

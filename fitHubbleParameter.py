@@ -39,7 +39,7 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     
     #prob = 1./np.sum((cumsumYtheory - yTrue)**2)
 
-    error[ error < 1e-4] = 1e-4
+    #error[ error < 1e-4] = 1e-4
 
     #upper = cumsumYtheory > yTrue
     #probUpper = norm.logpdf( cumsumYtheory[upper], \
@@ -50,15 +50,20 @@ def lnprob( theta, xTrue, yTrue, error, hubbleInterpolator ):
     #                yTrue[lower], scale=error[1][lower])
 
     #prob = np.sum(probUpper) + np.sum(probLower)
-    prob = np.sum(norm.pdf(cumsumYtheory, yTrue, error))
+    #prob = np.sum(norm.pdf(cumsumYtheory, yTrue, error))
 
+    yTrue = np.matrix(yTrue)
+    cumsumYtheory = np.matrix(cumsumYtheory)
+    
+    loglike = np.log10(np.sum(np.array((yTrue-cumsumYtheory)*1./error*(yTrue-cumsumYtheory).T)))
+    
 
-    if np.isnan(prob):
+    if np.isnan(loglike):
         pdb.set_trace()
         return -np.inf
 
 
-    return prob*prior
+    return loglike*prior
     
 def priorOnParameters( thetaDict, hubbleInterpolator ):
 

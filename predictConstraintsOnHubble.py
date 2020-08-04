@@ -121,7 +121,7 @@ def getPredictedConstraints(nIterations = 1,\
 
 
     #Loop through each sample size
-    for i, iSampleSize in enumerate(sampleSizes):
+    for i, iSampleSize in enumerate(sampleSizes[::-1]):
         print("Sample Size: %i" % (iSampleSize))
 
         samples = \
@@ -137,7 +137,7 @@ def getPredictedConstraints(nIterations = 1,\
 
         estimates[:, 0, i] = np.std(samples, axis=0)
         estimates[:, 1, i] = np.std(samples, axis=0)*0.1
-
+         
 
     return sampleSizes, estimates
 
@@ -156,7 +156,7 @@ def getMCMCchainForSamplesSize( iSampleSize, nIterations,\
           % iSampleSize
     
 
-    if os.path.isfile(pklFile):
+    if not os.path.isfile(pklFile):
         return pkl.load(open(pklFile, 'rb'))
     logProb = np.array([])
     for iIteration in range(nIterations):
@@ -244,7 +244,7 @@ def selectRandomSampleOfTimeDelays( nSamples, minimumTimeDelay=0., \
         np.percentile( variance, [50, 16, 84], axis=1)
 
     cumsumYError = np.array([median-lo, hi-median])
-    cumsumYError = np.std(variance,axis=1) 
+    cumsumYError = np.cov(variance) 
     trueY = realWorldInterpolator.predictCDF( xcentres, inputParams )
 
     return {'x':xcentres, 'y':trueY,  'error':cumsumYError}
